@@ -97,6 +97,14 @@
   .prow .del { width: 56px; height: 56px; }
   .btn.add { min-height: 52px; font-size: 17px; margin: 0; border-style: dashed; }
 
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .modes a {
+    display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 54px;
+    border-radius: 14px; border: 2px solid var(--primary); color: var(--primary);
+    background: #fff; font-weight: 700; font-size: 18px; text-decoration: none;
+  }
+  .modes a.sel { background: var(--primary); color: #fff; }
+
   .hint {
     display: none; margin-top: 8px; padding: 10px 12px;
     background: #e8f0fb; color: var(--primary); border-radius: 10px; font-size: 15px;
@@ -268,6 +276,7 @@
     <img src="logo.png" alt="Jonas Stolzenburg Baukonzept" onerror="this.remove()">
   </header>
   <div class="wrap">
+    <nav class="modes"><a class="sel" aria-current="page">🚪 Türen</a><a href="fenster.html">🪟 Fenster</a></nav>
     <div class="card">
       <label class="field">
         <span>Datum</span>

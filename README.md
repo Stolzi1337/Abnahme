@@ -1,11 +1,24 @@
 # Abnahme
 
-Mobile Web-App zur Abnahme von Innentüren für **Jonas Stolzenburg Baukonzept**.
-Die ganze App steckt in `index.html` (HTML, CSS und JavaScript), ohne Build-Schritt.
+Mobile Web-Apps zur Abnahme von Innentüren und Fenstern für **Jonas Stolzenburg Baukonzept**.
+Jede App steckt in einer einzigen HTML-Datei (HTML, CSS und JavaScript), ohne Build-Schritt.
 
-**Live:** https://stolzi1337.github.io/Abnahme/
+| App | Datei | Live |
+|---|---|---|
+| Türen | `index.html` | https://stolzi1337.github.io/Abnahme/ |
+| Fenster | `fenster.html` | https://stolzi1337.github.io/Abnahme/fenster.html |
 
-## Ablauf
+Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen** und **🪟 Fenster**. Gespeicherte Baustellen und Prüfer gelten für beide Apps.
+
+## Fenster-App: Unterschiede
+
+- Fotos **Innenansicht** und **Außenansicht** (Pflicht)
+- **Prüfliste** pro Fenster, jeder Punkt i.O. / n.i.O.: Funktion (Öffnen/Kippen/Schließen), Beschläge & Griff, Dichtungen, Anschlussfuge innen, Anschlussfuge außen, Glas & Rahmen unbeschädigt. „Alle i.O.“ füllt alles mit einem Tipp aus.
+- Wird ein Punkt als n.i.O. markiert, schlägt die App „Mangel“ vor. „In Ordnung“ ist dann nicht mehr möglich.
+- Das PDF zeigt die Prüfliste je Fenster. Die n.i.O.-Punkte erscheinen zusätzlich in der Zusammenfassung.
+- Dateiname: `Abnahme_Fenster_<Baustelle>_<Wohnung>_<Datum>.pdf`
+
+## Ablauf (Türen)
 
 1. **Start:** Datum (heute), Baustelle (Vorschlagsliste und automatischer Vorschlag der nächstgelegenen gespeicherten Baustelle im Umkreis von 500 m), Wohnung, Kunde, Prüfer. Mit „+ Weiteren Prüfer hinzufügen“ lassen sich mehrere Prüfer eintragen, die App merkt sich alle.
 2. **Türen:** Bezeichnung, Pflichtfotos Vorder- und Rückseite (max. 1280 px, JPEG 0.7, mit Uhrzeit und GPS inkl. Genauigkeit), Zustand „In Ordnung“, „Mangel“ oder „Fehlende Teile“. Bei Mängeln oder fehlenden Teilen ist eine Notiz Pflicht (mit Diktierfunktion), dazu ein optionales Detailfoto.
@@ -17,10 +30,11 @@ Die ganze App steckt in `index.html` (HTML, CSS und JavaScript), ohne Build-Schr
 
 | Datei | Zweck |
 |---|---|
-| `index.html` | Die App |
+| `index.html` | Türen-App |
+| `fenster.html` | Fenster-App |
 | `logo.png` | Logo für PDF und Startbildschirm. Zum Austauschen einfach ersetzen, am besten ein quadratisches PNG. |
 | `icon-180.png`, `icon-512.png` | App-Symbol für den Handy-Startbildschirm |
-| `manifest.webmanifest` | Damit die App installiert wie eine eigene App läuft |
+| `manifest.webmanifest`, `manifest-fenster.webmanifest` | Damit die Apps installiert wie eigene Apps laufen |
 
 ## Auf dem Handy einrichten
 
