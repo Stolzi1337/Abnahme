@@ -1159,6 +1159,20 @@
   });
   $('#btn-sig-back').addEventListener('click', () => showScreen('screen-doors'));
 
+  /* ---------- Logo (logo.png im selben Ordner) ---------- */
+  let logoData = null;
+  try {
+    fetch('logo.png', { cache: 'no-cache' })
+      .then((res) => (res.ok ? res.blob() : null))
+      .then((blob) => {
+        if (!blob) return;
+        const fr = new FileReader();
+        fr.onload = () => { logoData = fr.result; };
+        fr.readAsDataURL(blob);
+      })
+      .catch(() => {});
+  } catch (e) { /* ohne Logo weiter */ }
+
   /* ---------- PDF ---------- */
   // Standard-PDF-Schriften kennen nur Latin-1 – problematische Zeichen ersetzen
   function pdfText(s) {
@@ -1188,7 +1202,8 @@
     const PRIMARY = [30, 58, 95], GRAY = [93, 102, 118], DARK = [26, 31, 41];
     let y = M;
 
-    const ensure = (h) => { if (y + h > BOTTOM) { doc.addPage(); y = M + 2; } };
+    const TOP = 27; // Inhaltsbeginn auf Folgeseiten (unter Logo-Kopfzeile)
+    const ensure = (h) => { if (y + h > BOTTOM) { doc.addPage(); y = TOP; } };
     const setColor = (rgb) => doc.setTextColor(rgb[0], rgb[1], rgb[2]);
     const font = (style, size) => { doc.setFont('helvetica', style); doc.setFontSize(size); };
     const lineH = (size) => size * 0.3528 * 1.25; // pt -> mm mit Zeilenabstand
@@ -1237,14 +1252,16 @@
 
     /* Kopfbereich */
     doc.setFillColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
-    doc.rect(0, 0, PW, 26, 'F');
+    doc.rect(0, 0, PW, 30, 'F');
+    const LOGO1 = 26;
+    if (logoData) doc.addImage(logoData, 'PNG', PW - M - LOGO1, 2, LOGO1, LOGO1, 'logo', 'FAST');
     font('bold', 19); doc.setTextColor(255, 255, 255);
     doc.text('Abnahmeprotokoll', M, 13);
     font('normal', 10.5);
     doc.text('Innentüren', M, 20);
     font('normal', 9);
-    doc.text(pdfText('Erstellt: ' + fmtDateTime(new Date().toISOString())), PW - M, 20, { align: 'right' });
-    y = 34;
+    doc.text(pdfText('Erstellt: ' + fmtDateTime(new Date().toISOString())), M, 26);
+    y = 38;
 
     const metaRows = [
       ['Baustelle', m.baustelle],
@@ -1402,6 +1419,16 @@
     const n = doc.getNumberOfPages();
     for (let p = 1; p <= n; p++) {
       doc.setPage(p);
+      if (p > 1) {
+        const LOGO = 17;
+        if (logoData) doc.addImage(logoData, 'PNG', PW - M - LOGO, 3.5, LOGO, LOGO, 'logo', 'FAST');
+        font('bold', 11); setColor(PRIMARY);
+        doc.text('Abnahmeprotokoll', M, 12);
+        font('normal', 8.5); setColor(GRAY);
+        doc.text(doc.splitTextToSize(pdfText(m.baustelle + ' · ' + m.wohnung + ' · ' + isoToDe(m.datum)), CW - 25)[0], M, 17);
+        doc.setDrawColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]); doc.setLineWidth(0.4);
+        doc.line(M, 22.5, PW - M - (logoData ? 19 : 0), 22.5);
+      }
       doc.setDrawColor(210, 215, 222); doc.setLineWidth(0.3);
       doc.line(M, PH - 12, PW - M, PH - 12);
       font('normal', 8); setColor(GRAY);
