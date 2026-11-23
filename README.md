@@ -1,14 +1,15 @@
 # Abnahme
 
-Mobile Web-Apps zur Abnahme von Innentüren und Fenstern für **Jonas Stolzenburg Baukonzept**.
+Mobile Web-Apps zur Abnahme von Innentüren, Fenstern und allgemeinen Arbeiten für **Jonas Stolzenburg Baukonzept**.
 Jede App steckt in einer einzigen HTML-Datei (HTML, CSS und JavaScript), ohne Build-Schritt.
 
 | App | Datei | Live |
 |---|---|---|
 | Türen | `index.html` | https://stolzi1337.github.io/Abnahme/ |
 | Fenster | `fenster.html` | https://stolzi1337.github.io/Abnahme/fenster.html |
+| Allgemeine Arbeiten | `arbeiten.html` | https://stolzi1337.github.io/Abnahme/arbeiten.html |
 
-Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen** und **🪟 Fenster**. Gespeicherte Baustellen und Prüfer gelten für beide Apps.
+Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen**, **🪟 Fenster** und **🔨 Arbeiten**. Gespeicherte Baustellen und Prüfer gelten für alle Apps.
 
 ## Fenster-App: Unterschiede
 
@@ -17,6 +18,14 @@ Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen** und **🪟 Fe
 - Wird ein Punkt als n.i.O. markiert, schlägt die App „Mangel“ vor. „In Ordnung“ ist dann nicht mehr möglich.
 - Das PDF zeigt die Prüfliste je Fenster. Die n.i.O.-Punkte erscheinen zusätzlich in der Zusammenfassung.
 - Dateiname: `Abnahme_Fenster_<Baustelle>_<Wohnung>_<Datum>.pdf`
+
+## Arbeiten-App: Unterschiede
+
+- Für alle sonstigen Gewerke, zum Beispiel Malerarbeiten, Fliesen oder Trockenbau. Jede Position hat eine Bezeichnung.
+- Feld **Wohnung / Bereich**, damit auch Treppenhaus, Keller usw. passen
+- **Übersichtsfoto** ist Pflicht, ein zweites Foto („Weitere Ansicht“) optional
+- Zustand, Notiz mit Diktat und Detailfoto wie bei den Türen
+- Dateiname: `Abnahme_Arbeiten_<Baustelle>_<Bereich>_<Datum>.pdf`
 
 ## Ablauf (Türen)
 
@@ -32,9 +41,10 @@ Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen** und **🪟 Fe
 |---|---|
 | `index.html` | Türen-App |
 | `fenster.html` | Fenster-App |
+| `arbeiten.html` | App für allgemeine Arbeiten |
 | `logo.png` | Logo für PDF und Startbildschirm. Zum Austauschen einfach ersetzen, am besten ein quadratisches PNG. |
 | `icon-180.png`, `icon-512.png` | App-Symbol für den Handy-Startbildschirm |
-| `manifest.webmanifest`, `manifest-fenster.webmanifest` | Damit die Apps installiert wie eigene Apps laufen |
+| `manifest*.webmanifest` | Damit die Apps installiert wie eigene Apps laufen |
 
 ## Auf dem Handy einrichten
 
