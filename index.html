@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Abnahme">
+<title>Abnahme</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231e3a5f'/%3E%3Crect x='20' y='12' width='24' height='40' rx='2' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Ccircle cx='38' cy='33' r='2.5' fill='%23fff'/%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<style>
+  :root {
+    --primary: #1e3a5f;
+    --primary-dark: #142a46;
+    --bg: #eef1f5;
+    --card: #ffffff;
+    --text: #1a1f29;
+    --muted: #5d6676;
+    --border: #d3d9e2;
+    --ok: #2e7d32;
+    --ok-bg: #e7f4e8;
+    --bad: #c62828;
+    --bad-bg: #fdeaea;
+    --miss: #ef6c00;
+    --miss-bg: #fff1e2;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px; }
+
+  header.app {
+    background: var(--primary);
+    color: #fff;
+    padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
+  }
+  header.app h1 { margin: 0; font-size: 24px; letter-spacing: .3px; }
+  header.app p { margin: 2px 0 0; opacity: .8; font-size: 15px; }
+
+  .sticky-head {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--primary); color: #fff;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  }
+  .sticky-head .row { display: flex; align-items: center; gap: 12px; max-width: 640px; margin: 0 auto; }
+  .sticky-head .info { flex: 1; min-width: 0; }
+  .sticky-head .t1 { font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sticky-head .t2 { font-size: 14px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .counter {
+    background: #fff; color: var(--primary);
+    border-radius: 12px; padding: 4px 12px; text-align: center; min-width: 64px;
+  }
+  .counter b { display: block; font-size: 22px; line-height: 1.1; }
+  .counter span { font-size: 12px; font-weight: 600; }
+
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .card h2 { margin: 0 0 12px; font-size: 19px; }
+
+  label.field { display: block; margin-bottom: 14px; }
+  label.field > span { display: block; font-weight: 600; margin-bottom: 6px; font-size: 15px; }
+  label.field > span em { font-style: normal; color: var(--bad); }
+  input[type=text], input[type=date], textarea {
+    width: 100%; font: inherit; font-size: 18px;
+    padding: 14px; border: 2px solid var(--border); border-radius: 12px;
+    background: #fff; color: var(--text);
+    -webkit-appearance: none; appearance: none;
+  }
+  input[type=date] { min-height: 56px; }
+  textarea { min-height: 110px; resize: vertical; }
+  input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+  .invalid { border-color: var(--bad) !important; background: #fff7f7 !important; }
+
+  .hint {
+    display: none; margin-top: 8px; padding: 10px 12px;
+    background: #e8f0fb; color: var(--primary); border-radius: 10px; font-size: 15px;
+  }
+  .hint.show { display: block; }
+
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; min-height: 60px; padding: 14px 18px;
+    font: inherit; font-size: 19px; font-weight: 700;
+    border: none; border-radius: 14px; cursor: pointer;
+    background: var(--primary); color: #fff;
+    margin-bottom: 12px; text-decoration: none;
+    touch-action: manipulation; user-select: none;
+  }
+  .btn:active { transform: scale(.985); filter: brightness(.92); }
+  .btn:disabled { opacity: .45; }
+  .btn.secondary { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .btn.ghost { background: transparent; color: var(--muted); border: 2px solid var(--border); font-weight: 600; font-size: 17px; min-height: 54px; }
+  .btn.success { background: var(--ok); }
+  .btn.big { min-height: 68px; font-size: 20px; }
+
+  /* Fotos */
+  .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }
+  .slot {
+    position: relative; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    min-height: 170px; border: 3px dashed #9fb0c7; border-radius: 14px;
+    background: #f6f8fb; cursor: pointer; overflow: hidden; color: var(--primary);
+  }
+  .slot input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .slot .ico { font-size: 40px; line-height: 1; }
+  .slot .lbl { font-weight: 700; margin-top: 6px; font-size: 16px; }
+  .slot .sub { font-size: 13px; color: var(--muted); }
+  .slot.has { align-items: stretch; border-style: solid; border-color: var(--ok); background: #000; padding: 0; justify-content: flex-start; }
+  .slot.has img { width: 100%; height: 150px; object-fit: cover; display: block; }
+  .slot.has .meta { width: 100%; background: #fff; color: var(--text); font-size: 12px; line-height: 1.3; padding: 6px; text-align: left; }
+  .slot.has .meta b { color: var(--ok); }
+  .slot .retake { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.6); color: #fff; border-radius: 8px; padding: 2px 8px; font-size: 12px; }
+  .slot.busy::after {
+    content: "Wird verarbeitet…"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.85); color: var(--primary); font-weight: 700;
+  }
+  .slot.invalid { border-color: var(--bad); background: #fff3f3; }
+  .slot.detail { min-height: 120px; }
+
+  /* Status */
+  .status-btns { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .sbtn {
+    min-height: 62px; font: inherit; font-size: 19px; font-weight: 700;
+    border-radius: 14px; border: 3px solid; background: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    touch-action: manipulation;
+  }
+  .sbtn[data-status=ok] { color: var(--ok); border-color: var(--ok); }
+  .sbtn[data-status=mangel] { color: var(--bad); border-color: var(--bad); }
+  .sbtn[data-status=fehlend] { color: var(--miss); border-color: var(--miss); }
+  .sbtn.sel { color: #fff; }
+  .sbtn.sel[data-status=ok] { background: var(--ok); }
+  .sbtn.sel[data-status=mangel] { background: var(--bad); }
+  .sbtn.sel[data-status=fehlend] { background: var(--miss); }
+  .status-btns.invalid { outline: 3px solid var(--bad); outline-offset: 4px; border-radius: 14px; background: none !important; }
+
+  .note-box { display: none; margin-top: 16px; }
+  .note-box.show { display: block; }
+  .note-wrap { position: relative; }
+  .note-wrap textarea { padding-right: 76px; }
+  .mic {
+    position: absolute; right: 8px; top: 8px; width: 58px; height: 58px;
+    border-radius: 50%; border: none; background: var(--primary); color: #fff;
+    font-size: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .mic.rec { background: var(--bad); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(198,40,40,.6); } 50% { box-shadow: 0 0 0 12px rgba(198,40,40,0); } }
+  .mic-state { font-size: 14px; color: var(--bad); margin-top: 6px; min-height: 1em; }
+
+  .errors {
+    display: none; background: var(--bad-bg); color: var(--bad);
+    border: 2px solid var(--bad); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-weight: 600;
+  }
+  .errors.show { display: block; }
+  .errors ul { margin: 4px 0 0; padding-left: 20px; }
+
+  /* Türliste */
+  .door-list { list-style: none; margin: 0; padding: 0; }
+  .door-list li {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid #edf0f4;
+  }
+  .door-list li:last-child { border-bottom: none; }
+  .door-list img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; flex: none; background: #ddd; }
+  .door-list .dn { flex: 1; min-width: 0; }
+  .door-list .dn b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .door-list .dn small { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .del {
+    flex: none; width: 50px; height: 50px; border-radius: 12px;
+    border: 2px solid var(--border); background: #fff; color: var(--bad); font-size: 22px; cursor: pointer;
+  }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 13px; font-weight: 700; color: #fff; margin-top: 2px;
+  }
+  .badge.ok { background: var(--ok); }
+  .badge.mangel { background: var(--bad); }
+  .badge.fehlend { background: var(--miss); }
+  .empty { color: var(--muted); text-align: center; padding: 8px 0; }
+
+  /* Unterschrift */
+  .sig-wrap {
+    position: relative; border: 2px solid var(--border); border-radius: 14px;
+    background: #fff; overflow: hidden;
+  }
+  #sigCanvas { display: block; width: 100%; height: 240px; touch-action: none; cursor: crosshair; }
+  .sig-line {
+    position: absolute; left: 20px; right: 20px; bottom: 50px;
+    border-bottom: 2px dashed #b8c2cf; pointer-events: none;
+  }
+  .sig-x { position: absolute; left: 22px; bottom: 54px; font-size: 22px; color: #b8c2cf; pointer-events: none; }
+  .sig-ph {
+    position: absolute; left: 0; right: 0; bottom: 18px; text-align: center;
+    color: #9aa5b4; font-size: 14px; pointer-events: none;
+  }
+  .row2 { display: flex; gap: 10px; }
+  .row2 .btn { flex: 1; }
+
+  .summary-list { margin: 0; padding-left: 20px; }
+  .summary-list li { margin-bottom: 4px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 16px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; font-weight: 600; word-break: break-word; }
+
+  .done-icon {
+    width: 84px; height: 84px; border-radius: 50%; background: var(--ok); color: #fff;
+    font-size: 48px; display: flex; align-items: center; justify-content: center; margin: 8px auto 12px;
+  }
+  .center { text-align: center; }
+  .muted { color: var(--muted); }
+  .pending-sig { background: var(--miss-bg); color: #8a3e00; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-weight: 600; }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 100; background: rgba(20,30,45,.6);
+    display: none; align-items: center; justify-content: center; color: #fff; flex-direction: column; gap: 16px;
+    font-size: 19px; font-weight: 700;
+  }
+  .overlay.show { display: flex; }
+  .spinner { width: 54px; height: 54px; border: 6px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(150%);
+    background: #1a1f29; color: #fff; padding: 14px 20px; border-radius: 12px; font-weight: 600;
+    z-index: 110; transition: transform .25s ease, opacity .25s ease; max-width: calc(100% - 32px); text-align: center;
+    opacity: 0; pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .gps-state { font-size: 13px; color: var(--muted); margin-top: -4px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ============ 1. START ============ -->
+<section class="screen active" id="screen-start">
+  <header class="app">
+    <h1>Abnahme</h1>
+    <p>Innentüren – Abnahmeprotokoll</p>
+  </header>
+  <div class="wrap">
+    <div class="card">
+      <label class="field">
+        <span>Datum</span>
+        <input type="date" id="f-datum">
+      </label>
+      <label class="field">
+        <span>Baustelle <em>*</em></span>
+        <input type="text" id="f-baustelle" list="baustellen-list" autocomplete="off" placeholder="z. B. Neubau Lindenstraße 12">
+        <datalist id="baustellen-list"></datalist>
+        <div class="hint" id="baustelle-hint"></div>
+      </label>
+      <div class="gps-state" id="gps-state">📍 GPS wird ermittelt…</div>
+      <label class="field">
+        <span>Wohnung <em>*</em></span>
+        <input type="text" id="f-wohnung" autocomplete="off" placeholder="z. B. Wohnung 3, 1. OG">
+      </label>
+      <label class="field">
+        <span>Kunde</span>
+        <input type="text" id="f-kunde" autocomplete="off" placeholder="Name des Kunden">
+      </label>
+      <label class="field">
+        <span>Name des Prüfers <em>*</em></span>
+        <input type="text" id="f-pruefer" autocomplete="name" placeholder="Ihr Name">
+      </label>
+      <div class="errors" id="start-errors"></div>
+      <button class="btn big" id="btn-start" type="button">Abnahme starten ▶</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. TÜREN ============ -->
+<section class="screen" id="screen-doors">
+  <div class="sticky-head">
+    <div class="row">
+      <div class="info">
+        <div class="t1" id="h-baustelle"></div>
+        <div class="t2" id="h-sub"></div>
+      </div>
+      <div class="counter"><b id="h-count">0</b><span id="h-count-lbl">Türen</span></div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="card" id="door-form">
+      <h2 id="door-title">Tür 1</h2>
+      <label class="field">
+        <span>Bezeichnung <em>*</em></span>
+        <input type="text" id="d-name" autocomplete="off" placeholder="z. B. Bad, Küche, Schlafzimmer" enterkeyhint="done">
+      </label>
+
+      <div class="field">
+        <span style="display:block;font-weight:600;margin-bottom:6px;font-size:15px">Fotos <em style="font-style:normal;color:var(--bad)">*</em></span>
+        <div class="photos">
+          <label class="slot" id="slot-front" data-key="front" data-label="Vorderseite">
+            <input type="file" accept="image/*" capture="environment">
+            <div class="slot-body"></div>
+          </label>
+          <label class="slot" id="slot-back" data-key="back" data-label="Rückseite">
+            <input type="file" accept="image/*" capture="environment">
+            <div class="slot-body"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <span style="display:block;font-weight:600;margin-bottom:6px;font-size:15px">Zustand <em style="font-style:normal;color:var(--bad)">*</em></span>
+        <div class="status-btns" id="status-btns">
+          <button type="button" class="sbtn" data-status="ok">✔ In Ordnung</button>
+          <button type="button" class="sbtn" data-status="mangel">✖ Mangel</button>
+          <button type="button" class="sbtn" data-status="fehlend">⚠ Fehlende Teile</button>
+        </div>
+      </div>
+
+      <div class="note-box" id="note-box">
+        <label class="field">
+          <span id="note-label">Notiz <em>*</em></span>
+          <div class="note-wrap">
+            <textarea id="d-note" placeholder="Beschreibung des Mangels bzw. der fehlenden Teile"></textarea>
+            <button type="button" class="mic" id="btn-mic" aria-label="Diktieren">🎤</button>
+          </div>
+          <div class="mic-state" id="mic-state"></div>
+        </label>
+        <span style="display:block;font-weight:600;margin-bottom:6px;font-size:15px">Detailfoto (optional)</span>
+        <label class="slot detail" id="slot-detail" data-key="detail" data-label="Detailfoto">
+          <input type="file" accept="image/*" capture="environment">
+          <div class="slot-body"></div>
+        </label>
+      </div>
+    </div>
+
+    <div class="errors" id="door-errors"></div>
+    <button class="btn big success" id="btn-save-door" type="button">+ Tür speichern &amp; nächste Tür</button>
+
+    <div class="card">
+      <h2>Erfasste Türen (<span id="list-count">0</span>)</h2>
+      <ul class="door-list" id="door-list"></ul>
+    </div>
+
+    <button class="btn big" id="btn-finish" type="button">Wohnung abschließen ✓</button>
+    <button class="btn ghost" id="btn-cancel" type="button">Abnahme abbrechen</button>
+  </div>
+</section>
+
+<!-- ============ 3. UNTERSCHRIFT ============ -->
+<section class="screen" id="screen-sign">
+  <header class="app">
+    <h1>Unterschrift</h1>
+    <p id="sign-sub"></p>
+  </header>
+  <div class="wrap">
+    <div class="card">
+      <h2>Zusammenfassung</h2>
+      <div id="sign-summary"></div>
+    </div>
+    <div class="card">
+      <h2>Unterschrift Kunde</h2>
+      <p class="muted" style="margin-top:0;font-size:15px" id="sign-text"></p>
+      <div class="sig-wrap">
+        <canvas id="sigCanvas"></canvas>
+        <div class="sig-x">✕</div>
+        <div class="sig-line"></div>
+        <div class="sig-ph" id="sig-ph">Hier mit dem Finger unterschreiben</div>
+      </div>
+      <div class="row2" style="margin-top:12px">
+        <button class="btn ghost" id="btn-sig-clear" type="button">Löschen</button>
+      </div>
+      <button class="btn big success" id="btn-sig-ok" type="button" disabled>Unterschreiben &amp; Bericht erstellen</button>
+      <button class="btn secondary" id="btn-sig-later" type="button">Später unterschreiben</button>
+      <button class="btn ghost" id="btn-sig-back" type="button">◀ Zurück zu den Türen</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5. FERTIG ============ -->
+<section class="screen" id="screen-done">
+  <header class="app">
+    <h1>Bericht erstellt</h1>
+    <p id="done-sub"></p>
+  </header>
+  <div class="wrap">
+    <div class="card center">
+      <div class="done-icon">✓</div>
+      <div id="done-info"></div>
+    </div>
+    <div class="pending-sig" id="done-pending" style="display:none">Unterschrift ausstehend – der Kunde kann den Bericht später unterschreiben.</div>
+    <button class="btn big success" id="btn-share" type="button">📤 Bericht teilen</button>
+    <button class="btn secondary" id="btn-download" type="button">⬇ PDF herunterladen</button>
+    <button class="btn secondary" id="btn-sign-now" type="button" style="display:none">✍ Jetzt doch unterschreiben</button>
+    <div style="height:12px"></div>
+    <button class="btn" id="btn-next-flat" type="button">Nächste Wohnung (gleiche Baustelle)</button>
+    <button class="btn ghost" id="btn-new" type="button">Ganz neue Abnahme</button>
+  </div>
+</section>
+
+<div class="overlay" id="overlay"><div class="spinner"></div><div id="overlay-text">Bericht wird erstellt…</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Hilfsfunktionen ---------- */
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+  const KEY_SITES = 'abnahme.baustellen';
+  const KEY_PRUEFER = 'abnahme.pruefer';
+
+  const store = {
+    get(key, fallback) {
+      try {
+        const v = localStorage.getItem(key);
+        return v == null ? fallback : JSON.parse(v);
+      } catch (e) { return fallback; }
+    },
+    set(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+      catch (e) { return false; }
+    }
+  };
+
+  const STATUS = {
+    ok:      { label: 'In Ordnung',     rgb: [46, 125, 50] },
+    mangel:  { label: 'Mangel',         rgb: [198, 40, 40] },
+    fehlend: { label: 'Fehlende Teile', rgb: [239, 108, 0] }
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function todayIso() {
+    const d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function isoToDe(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+    return m ? m[3] + '.' + m[2] + '.' + m[1] : (iso || '');
+  }
+  function fmtDateTime(iso) {
+    const d = new Date(iso);
+    return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear() + ', ' +
+      pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + ' Uhr';
+  }
+  function fmtGps(g) {
+    if (!g) return 'GPS: nicht verfügbar';
+    return 'GPS: ' + g.lat.toFixed(6) + ', ' + g.lon.toFixed(6) + ' (±' + Math.round(g.acc) + ' m)';
+  }
+  function distanceM(a, b) {
+    const R = 6371000, rad = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * rad, dLon = (b.lon - a.lon) * rad;
+    const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(x));
+  }
+
+  let toastTimer = null;
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+  function overlay(show, text) {
+    $('#overlay-text').textContent = text || 'Bitte warten…';
+    $('#overlay').classList.toggle('show', !!show);
+  }
+  function showScreen(id) {
+    $$('.screen').forEach((s) => s.classList.toggle('active', s.id === id));
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------- GPS ---------- */
+  const geo = {
+    last: null,
+    watchId: null,
+    listeners: [],
+    start() {
+      if (!('geolocation' in navigator) || this.watchId != null) {
+        if (!('geolocation' in navigator)) setGpsState('📍 GPS wird von diesem Gerät nicht unterstützt');
+        return;
+      }
+      try {
+        this.watchId = navigator.geolocation.watchPosition(
+          (p) => this._set(p),
+          (err) => {
+            if (err && err.code === 1) setGpsState('📍 GPS-Zugriff verweigert – Fotos werden ohne Standort gespeichert');
+            else if (!this.last) setGpsState('📍 GPS-Position noch nicht verfügbar');
+          },
+          { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 }
+        );
+      } catch (e) { /* ignore */ }
+    },
+    _set(p) {
+      this.last = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, ts: Date.now() };
+      this.listeners.forEach((fn) => { try { fn(this.last); } catch (e) {} });
+    },
+    copy() { return this.last ? { lat: this.last.lat, lon: this.last.lon, acc: this.last.acc } : null; },
+    // Liefert eine möglichst aktuelle Position (oder null)
+    get(maxAgeMs) {
+      maxAgeMs = maxAgeMs || 30000;
+      return new Promise((resolve) => {
+        if (this.last && Date.now() - this.last.ts < maxAgeMs) return resolve(this.copy());
+        if (!('geolocation' in navigator)) return resolve(null);
+        try {
+          navigator.geolocation.getCurrentPosition(
+            (p) => { this._set(p); resolve(this.copy()); },
+            () => resolve(this.copy()),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
+          );
+        } catch (e) { resolve(this.copy()); }
+      });
+    }
+  };
+  function setGpsState(text) { $('#gps-state').textContent = text; }
+
+  /* ---------- Baustellen (localStorage) ---------- */
+  function loadSites() {
+    const list = store.get(KEY_SITES, []);
+    return Array.isArray(list) ? list.filter((s) => s && typeof s.name === 'string' && s.name.trim()) : [];
+  }
+  function renderSiteList() {
+    const sites = loadSites().sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+    $('#baustellen-list').innerHTML = sites.map((s) => '<option value="' + esc(s.name) + '"></option>').join('');
+  }
+  function rememberSite(name, pos) {
+    const sites = loadSites();
+    const key = name.trim().toLowerCase();
+    let site = sites.find((s) => s.name.trim().toLowerCase() === key);
+    if (!site) {
+      site = { name: name.trim() };
+      sites.push(site);
+    }
+    site.lastUsed = Date.now();
+    // Position übernehmen, wenn noch keine vorhanden oder die neue genauer ist
+    if (pos && (site.lat == null || pos.acc < (site.acc || Infinity))) {
+      site.lat = pos.lat; site.lon = pos.lon; site.acc = pos.acc;
+    }
+    store.set(KEY_SITES, sites);
+    renderSiteList();
+  }
+
+  let suggestionDone = false;
+  let userTypedSite = false;
+  function trySuggestNearest(pos) {
+    if (!$('#screen-start').classList.contains('active')) return;
+    setGpsState('📍 GPS aktiv (±' + Math.round(pos.acc) + ' m)');
+    if (suggestionDone) return;
+    const sites = loadSites().filter((s) => typeof s.lat === 'number' && typeof s.lon === 'number');
+    if (!sites.length) { suggestionDone = true; return; }
+    let best = null, bestD = Infinity;
+    sites.forEach((s) => {
+      const d = distanceM(pos, s);
+      if (d < bestD) { bestD = d; best = s; }
+    });
+    suggestionDone = true;
+    if (best && bestD <= 500) {
+      const input = $('#f-baustelle');
+      const hint = $('#baustelle-hint');
+      if (!input.value.trim() && !userTypedSite) {
+        input.value = best.name;
+        hint.innerHTML = '📍 Nächstgelegene Baustelle automatisch vorgeschlagen: <b>' + esc(best.name) + '</b> (ca. ' + Math.round(bestD) + ' m entfernt)';
+      } else if (input.value.trim().toLowerCase() !== best.name.trim().toLowerCase()) {
+        hint.innerHTML = '📍 In der Nähe (ca. ' + Math.round(bestD) + ' m): <b>' + esc(best.name) + '</b> – <u>übernehmen</u>';
+        hint.onclick = () => { input.value = best.name; hint.classList.remove('show'); };
+      } else return;
+      hint.classList.add('show');
+    }
+  }
+  geo.listeners.push(trySuggestNearest);
+
+  /* ---------- Zustand ---------- */
+  const state = {
+    meta: null,          // { datum, baustelle, wohnung, kunde, pruefer }
+    doors: [],
+    signature: null,     // { data, w, h } oder null
+    pdf: null,           // { blob, name }
+    reportCreated: false
+  };
+  let current = newDoor();
+
+  function newDoor() {
+    return { id: Date.now() + Math.random(), name: '', front: null, back: null, status: null, note: '', detail: null };
+  }
+  function isDirty(d) {
+    return !!(d.name.trim() || d.front || d.back || d.status || d.note.trim() || d.detail);
+  }
+
+  /* ---------- Startbildschirm ---------- */
+  function initStart(opts) {
+    opts = opts || {};
+    $('#f-datum').value = opts.keepDate && state.meta ? state.meta.datum : todayIso();
+    $('#f-baustelle').value = opts.keepSite && state.meta ? state.meta.baustelle : '';
+    $('#f-wohnung').value = '';
+    $('#f-kunde').value = '';
+    $('#f-pruefer').value = store.get(KEY_PRUEFER, '') || '';
+    $('#baustelle-hint').classList.remove('show');
+    $('#baustelle-hint').onclick = null;
+    $('#start-errors').classList.remove('show');
+    $$('#screen-start .invalid').forEach((el) => el.classList.remove('invalid'));
+    renderSiteList();
+    userTypedSite = !!opts.keepSite;
+    suggestionDone = !!opts.keepSite;
+    if (!opts.keepSite && geo.last) trySuggestNearest(geo.last);
+  }
+
+  $('#f-baustelle').addEventListener('input', () => { userTypedSite = true; });
+
+  $('#btn-start').addEventListener('click', async () => {
+    const fields = {
+      datum: $('#f-datum'), baustelle: $('#f-baustelle'), wohnung: $('#f-wohnung'),
+      kunde: $('#f-kunde'), pruefer: $('#f-pruefer')
+    };
+    const errs = [];
+    Object.values(fields).forEach((el) => el.classList.remove('invalid'));
+    if (!fields.datum.value) { errs.push('Datum fehlt'); fields.datum.classList.add('invalid'); }
+    if (!fields.baustelle.value.trim()) { errs.push('Baustelle angeben'); fields.baustelle.classList.add('invalid'); }
+    if (!fields.wohnung.value.trim()) { errs.push('Wohnung angeben'); fields.wohnung.classList.add('invalid'); }
+    if (!fields.pruefer.value.trim()) { errs.push('Name des Prüfers angeben'); fields.pruefer.classList.add('invalid'); }
+    const box = $('#start-errors');
+    if (errs.length) {
+      box.innerHTML = 'Bitte ergänzen:<ul>' + errs.map((e) => '<li>' + esc(e) + '</li>').join('') + '</ul>';
+      box.classList.add('show');
+      return;
+    }
+    box.classList.remove('show');
+
+    state.meta = {
+      datum: fields.datum.value,
+      baustelle: fields.baustelle.value.trim(),
+      wohnung: fields.wohnung.value.trim(),
+      kunde: fields.kunde.value.trim(),
+      pruefer: fields.pruefer.value.trim()
+    };
+    store.set(KEY_PRUEFER, state.meta.pruefer);
+    const pos = geo.last && Date.now() - geo.last.ts < 5 * 60000 ? geo.copy() : null;
+    rememberSite(state.meta.baustelle, pos);
+    if (!pos) {
+      // Position nachträglich ergänzen, sobald verfügbar
+      const name = state.meta.baustelle;
+      geo.get(60000).then((p) => { if (p) rememberSite(name, p); });
+    }
+
+    state.doors = [];
+    state.signature = null;
+    state.pdf = null;
+    state.reportCreated = false;
+    current = newDoor();
+    renderDoorForm();
+    renderDoorList();
+    renderHeader();
+    showScreen('screen-doors');
+  });
+
+  /* ---------- Türen ---------- */
+  function renderHeader() {
+    const m = state.meta;
+    $('#h-baustelle').textContent = m.baustelle;
+    $('#h-sub').textContent = m.wohnung + ' · ' + isoToDe(m.datum);
+    $('#h-count').textContent = state.doors.length;
+    $('#h-count-lbl').textContent = state.doors.length === 1 ? 'Tür' : 'Türen';
+    $('#list-count').textContent = state.doors.length;
+    $('#door-title').textContent = 'Tür ' + (state.doors.length + 1);
+  }
+
+  function renderSlot(slotEl) {
+    const key = slotEl.dataset.key;
+    const label = slotEl.dataset.label;
+    const photo = current[key];
+    const body = slotEl.querySelector('.slot-body');
+    slotEl.classList.toggle('has', !!photo);
+    if (photo) {
+      body.innerHTML =
+        '<img alt="' + esc(label) + '" src="' + photo.data + '">' +
+        '<span class="retake">Neu</span>' +
+        '<div class="meta"><b>✔ ' + esc(label) + '</b><br>' + esc(fmtDateTime(photo.time).replace(', ', ' ')) +
+        '<br>' + esc(photo.gps ? '±' + Math.round(photo.gps.acc) + ' m GPS' : 'ohne GPS') + '</div>';
+    } else {
+      body.innerHTML =
+        '<div class="ico">📷</div><div class="lbl">' + esc(label) + '</div>' +
+        '<div class="sub">' + (key === 'detail' ? 'optional – antippen' : 'antippen zum Fotografieren') + '</div>';
+    }
+  }
+
+  function renderDoorForm() {
+    $('#d-name').value = current.name;
+    $('#d-note').value = current.note;
+    $$('.slot').forEach(renderSlot);
+    $$('.sbtn').forEach((b) => b.classList.toggle('sel', b.dataset.status === current.status));
+    const needNote = current.status === 'mangel' || current.status === 'fehlend';
+    $('#note-box').classList.toggle('show', needNote);
+    $('#note-label').innerHTML = (current.status === 'fehlend' ? 'Welche Teile fehlen?' : 'Beschreibung des Mangels') + ' <em>*</em>';
+    $('#door-errors').classList.remove('show');
+    $$('#door-form .invalid, #status-btns.invalid').forEach((el) => el.classList.remove('invalid'));
+  }
+
+  function renderDoorList() {
+    const ul = $('#door-list');
+    if (!state.doors.length) {
+      ul.innerHTML = '<li class="empty">Noch keine Tür erfasst.</li>';
+      return;
+    }
+    ul.innerHTML = state.doors.map((d, i) =>
+      '<li>' +
+        '<img alt="" src="' + d.front.data + '">' +
+        '<div class="dn"><b>' + (i + 1) + '. ' + esc(d.name) + '</b>' +
+          '<span class="badge ' + d.status + '">' + esc(STATUS[d.status].label) + '</span>' +
+          (d.note ? '<small>' + esc(d.note) + '</small>' : '') +
+        '</div>' +
+        '<button class="del" type="button" data-idx="' + i + '" aria-label="Tür löschen">🗑</button>' +
+      '</li>'
+    ).join('');
+  }
+
+  $('#door-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('.del');
+    if (!btn) return;
+    const idx = Number(btn.dataset.idx);
+    const d = state.doors[idx];
+    if (!d) return;
+    if (!confirm('Tür „' + d.name + '“ wirklich löschen?')) return;
+    state.doors.splice(idx, 1);
+    renderDoorList();
+    renderHeader();
+    toast('Tür gelöscht');
+  });
+
+  $('#d-name').addEventListener('input', (e) => { current.name = e.target.value; refreshDoorErrors(); });
+  $('#d-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
+  $('#d-note').addEventListener('input', (e) => { current.note = e.target.value; refreshDoorErrors(); });
+
+  $('#status-btns').addEventListener('click', (e) => {
+    const b = e.target.closest('.sbtn');
+    if (!b) return;
+    current.status = b.dataset.status;
+    $$('.sbtn').forEach((x) => x.classList.toggle('sel', x === b));
+    $('#status-btns').classList.remove('invalid');
+    const needNote = current.status !== 'ok';
+    $('#note-box').classList.toggle('show', needNote);
+    $('#note-label').innerHTML = (current.status === 'fehlend' ? 'Welche Teile fehlen?' : 'Beschreibung des Mangels') + ' <em>*</em>';
+    if (!needNote) stopDictation();
+    refreshDoorErrors();
+  });
+
+  /* ---------- Fotos ---------- */
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => resolve({ img, url });
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Bild konnte nicht gelesen werden')); };
+      img.src = url;
+    });
+  }
+
+  async function processPhoto(file) {
+    const takenAt = new Date().toISOString();
+    const gpsPromise = geo.get(30000);
+    const { img, url } = await loadImage(file);
+    try {
+      const w0 = img.naturalWidth, h0 = img.naturalHeight;
+      const scale = Math.min(1, 1280 / Math.max(w0, h0));
+      const w = Math.max(1, Math.round(w0 * scale)), h = Math.max(1, Math.round(h0 * scale));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      const data = c.toDataURL('image/jpeg', 0.7);
+      const gps = await gpsPromise;
+      return { data, w, h, time: takenAt, gps };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  $$('.slot').forEach((slotEl) => {
+    const input = slotEl.querySelector('input');
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      input.value = '';
+      if (!file) return;
+      const doorRef = current;
+      slotEl.classList.add('busy');
+      try {
+        const photo = await processPhoto(file);
+        if (doorRef !== current) return; // Tür wurde inzwischen gewechselt
+        current[slotEl.dataset.key] = photo;
+        slotEl.classList.remove('invalid');
+        renderSlot(slotEl);
+        refreshDoorErrors();
+      } catch (e) {
+        alert('Das Foto konnte nicht verarbeitet werden. Bitte erneut versuchen.');
+      } finally {
+        slotEl.classList.remove('busy');
+      }
+    });
+  });
+
+  /* ---------- Diktieren (Web Speech API) ---------- */
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let recActive = false;
+  if (!SpeechRec) {
+    $('#btn-mic').style.display = 'none';
+    $('#d-note').style.paddingRight = '14px';
+  }
+  function stopDictation() {
+    if (recognition && recActive) { try { recognition.stop(); } catch (e) {} }
+  }
+  function setMicUi(on, msg) {
+    recActive = on;
+    $('#btn-mic').classList.toggle('rec', on);
+    $('#btn-mic').textContent = on ? '■' : '🎤';
+    $('#mic-state').textContent = msg || '';
+  }
+  $('#btn-mic').addEventListener('click', () => {
+    if (!SpeechRec) return;
+    if (recActive) { stopDictation(); return; }
+    recognition = new SpeechRec();
+    recognition.lang = 'de-DE';
+    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.maxAlternatives = 1;
+    recognition.onstart = () => setMicUi(true, '● Aufnahme läuft – sprechen Sie jetzt. Zum Beenden erneut tippen.');
+    recognition.onresult = (ev) => {
+      let text = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        if (ev.results[i].isFinal) text += ev.results[i][0].transcript;
+      }
+      text = text.trim();
+      if (!text) return;
+      const ta = $('#d-note');
+      const sep = ta.value && !/\s$/.test(ta.value) ? ' ' : '';
+      ta.value = ta.value + sep + text.charAt(0).toUpperCase() + text.slice(1);
+      current.note = ta.value;
+      refreshDoorErrors();
+    };
+    recognition.onerror = (ev) => {
+      const msg = ev.error === 'not-allowed' || ev.error === 'service-not-allowed'
+        ? 'Mikrofon-Zugriff verweigert.'
+        : ev.error === 'no-speech' ? 'Keine Sprache erkannt.' : 'Diktieren nicht möglich (' + ev.error + ').';
+      setMicUi(false, msg);
+    };
+    recognition.onend = () => { if (recActive) setMicUi(false, ''); };
+    try { recognition.start(); } catch (e) { setMicUi(false, 'Diktieren konnte nicht gestartet werden.'); }
+  });
+
+  /* ---------- Tür speichern ---------- */
+  // Fehlerliste aktualisieren, sobald Angaben ergänzt werden
+  function refreshDoorErrors() {
+    if ($('#door-errors').classList.contains('show')) validateDoor(true, true);
+  }
+
+  function validateDoor(mark, quiet) {
+    const errs = [];
+    const marks = [];
+    if (!current.name.trim()) { errs.push('Bezeichnung der Tür'); marks.push($('#d-name')); }
+    if (!current.front) { errs.push('Foto Vorderseite'); marks.push($('#slot-front')); }
+    if (!current.back) { errs.push('Foto Rückseite'); marks.push($('#slot-back')); }
+    if (!current.status) { errs.push('Zustand auswählen'); marks.push($('#status-btns')); }
+    if ((current.status === 'mangel' || current.status === 'fehlend') && !current.note.trim()) {
+      errs.push(current.status === 'mangel' ? 'Notiz zum Mangel' : 'Notiz zu den fehlenden Teilen');
+      marks.push($('#d-note'));
+    }
+    if (mark) {
+      $$('#door-form .invalid, #status-btns.invalid').forEach((el) => el.classList.remove('invalid'));
+      marks.forEach((el) => el.classList.add('invalid'));
+      const box = $('#door-errors');
+      if (errs.length) {
+        box.innerHTML = 'Bitte noch ergänzen:<ul>' + errs.map((e) => '<li>' + esc(e) + '</li>').join('') + '</ul>';
+        box.classList.add('show');
+        if (!quiet) marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else box.classList.remove('show');
+    }
+    return errs.length === 0;
+  }
+
+  function saveCurrentDoor() {
+    stopDictation();
+    const d = current;
+    d.name = d.name.trim();
+    d.note = d.status === 'ok' ? '' : d.note.trim();
+    if (d.status === 'ok') d.detail = null;
+    state.doors.push(d);
+    current = newDoor();
+    renderDoorForm();
+    renderDoorList();
+    renderHeader();
+  }
+
+  $('#btn-save-door').addEventListener('click', () => {
+    if (!validateDoor(true)) return;
+    const name = current.name.trim();
+    saveCurrentDoor();
+    toast('✔ Tür „' + name + '“ gespeichert');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  $('#btn-finish').addEventListener('click', () => {
+    if (isDirty(current)) {
+      if (validateDoor(false)) {
+        if (!confirm('Die aktuelle Tür „' + current.name.trim() + '“ ist noch nicht gespeichert.\n\nOK = Tür speichern und Wohnung abschließen')) return;
+        saveCurrentDoor();
+      } else {
+        if (!confirm('Die aktuelle Tür ist unvollständig und wird nicht gespeichert.\n\nTrotzdem abschließen?')) return;
+        current = newDoor();
+        renderDoorForm();
+      }
+    }
+    if (!state.doors.length) {
+      alert('Bitte mindestens eine Tür erfassen.');
+      return;
+    }
+    stopDictation();
+    openSignScreen();
+  });
+
+  $('#btn-cancel').addEventListener('click', () => {
+    if (state.doors.length || isDirty(current)) {
+      if (!confirm('Abnahme wirklich abbrechen? Alle erfassten Türen dieser Wohnung gehen verloren.')) return;
+    }
+    stopDictation();
+    state.doors = [];
+    current = newDoor();
+    state.reportCreated = false;
+    initStart({ keepSite: true, keepDate: true });
+    $('#f-wohnung').value = state.meta ? state.meta.wohnung : '';
+    $('#f-kunde').value = state.meta ? state.meta.kunde : '';
+    showScreen('screen-start');
+  });
+
+  /* ---------- Unterschrift ---------- */
+  const sig = {
+    canvas: $('#sigCanvas'),
+    ctx: null,
+    strokes: [],
+    drawing: false,
+    cssW: 0, cssH: 0
+  };
+  sig.ctx = sig.canvas.getContext('2d');
+
+  function sigResize() {
+    const rect = sig.canvas.getBoundingClientRect();
+    if (!rect.width) return;
+    const dpr = window.devicePixelRatio || 1;
+    sig.cssW = rect.width; sig.cssH = rect.height;
+    sig.canvas.width = Math.round(rect.width * dpr);
+    sig.canvas.height = Math.round(rect.height * dpr);
+    sig.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sigRedraw();
+  }
+  function sigStyle(ctx) {
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#0b1f4a';
+    ctx.fillStyle = '#0b1f4a';
+  }
+  function drawStroke(ctx, pts) {
+    if (!pts.length) return;
+    if (pts.length === 1) {
+      ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 1.4, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i].x + pts[i + 1].x) / 2, my = (pts[i].y + pts[i + 1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+    }
+    const last = pts[pts.length - 1];
+    ctx.lineTo(last.x, last.y);
+    ctx.stroke();
+  }
+  function sigRedraw() {
+    const ctx = sig.ctx;
+    ctx.clearRect(0, 0, sig.cssW, sig.cssH);
+    sigStyle(ctx);
+    sig.strokes.forEach((s) => drawStroke(ctx, s));
+  }
+  function sigUpdateUi() {
+    const has = sig.strokes.length > 0;
+    $('#btn-sig-ok').disabled = !has;
+    $('#sig-ph').style.visibility = has ? 'hidden' : 'visible';
+  }
+  function sigPoint(e) {
+    const r = sig.canvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  sig.canvas.addEventListener('pointerdown', (e) => {
+    if (e.button !== undefined && e.button > 0) return;
+    e.preventDefault();
+    try { sig.canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    sig.drawing = true;
+    sig.strokes.push([sigPoint(e)]);
+    sigRedraw();
+    sigUpdateUi();
+  });
+  sig.canvas.addEventListener('pointermove', (e) => {
+    if (!sig.drawing) return;
+    e.preventDefault();
+    const stroke = sig.strokes[sig.strokes.length - 1];
+    const events = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [e];
+    (events.length ? events : [e]).forEach((ev) => stroke.push(sigPoint(ev)));
+    sigRedraw();
+  });
+  const sigEnd = (e) => {
+    if (!sig.drawing) return;
+    sig.drawing = false;
+    try { sig.canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+  };
+  sig.canvas.addEventListener('pointerup', sigEnd);
+  sig.canvas.addEventListener('pointercancel', sigEnd);
+  sig.canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+  window.addEventListener('resize', () => { if ($('#screen-sign').classList.contains('active')) sigResize(); });
+
+  $('#btn-sig-clear').addEventListener('click', () => {
+    sig.strokes = [];
+    sigRedraw();
+    sigUpdateUi();
+  });
+
+  // Unterschrift auf den gezeichneten Bereich zuschneiden
+  function exportSignature() {
+    if (!sig.strokes.length) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    sig.strokes.forEach((s) => s.forEach((p) => {
+      minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+    }));
+    const padPx = 8, scale = 3;
+    const w = Math.max(40, maxX - minX + padPx * 2), h = Math.max(20, maxY - minY + padPx * 2);
+    const c = document.createElement('canvas');
+    c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+    const ctx = c.getContext('2d');
+    ctx.setTransform(scale, 0, 0, scale, (-minX + padPx) * scale, (-minY + padPx) * scale);
+    sigStyle(ctx);
+    sig.strokes.forEach((s) => drawStroke(ctx, s));
+    return { data: c.toDataURL('image/png'), w: c.width, h: c.height };
+  }
+
+  function counts() {
+    const c = { ok: 0, mangel: 0, fehlend: 0 };
+    state.doors.forEach((d) => { c[d.status]++; });
+    return c;
+  }
+
+  function openSignScreen() {
+    const m = state.meta;
+    const c = counts();
+    $('#sign-sub').textContent = m.baustelle + ' · ' + m.wohnung;
+    const open = state.doors.filter((d) => d.status !== 'ok');
+    let html = '<dl class="kv">' +
+      '<dt>Türen</dt><dd>' + state.doors.length + '</dd>' +
+      '<dt>In Ordnung</dt><dd style="color:var(--ok)">' + c.ok + '</dd>' +
+      '<dt>Mängel</dt><dd style="color:var(--bad)">' + c.mangel + '</dd>' +
+      '<dt>Fehlende Teile</dt><dd style="color:var(--miss)">' + c.fehlend + '</dd>' +
+      '</dl>';
+    if (open.length) {
+      html += '<h3 style="margin:14px 0 6px;font-size:16px">Offene Punkte</h3><ul class="summary-list">' +
+        open.map((d) => '<li><b>' + esc(d.name) + '</b> – <span class="badge ' + d.status + '">' + esc(STATUS[d.status].label) + '</span><br>' + esc(d.note) + '</li>').join('') +
+        '</ul>';
+    } else {
+      html += '<p style="margin:12px 0 0;color:var(--ok);font-weight:700">Keine offenen Punkte – alle Türen in Ordnung.</p>';
+    }
+    $('#sign-summary').innerHTML = html;
+    $('#sign-text').textContent = (m.kunde ? m.kunde + ', b' : 'B') +
+      'itte bestätigen Sie mit Ihrer Unterschrift die Abnahme der aufgeführten Türen im dokumentierten Zustand.';
+    $('#btn-sig-back').style.display = state.reportCreated ? 'none' : '';
+    sig.strokes = [];
+    showScreen('screen-sign');
+    requestAnimationFrame(() => { sigResize(); sigUpdateUi(); });
+  }
+
+  $('#btn-sig-ok').addEventListener('click', () => {
+    if (!sig.strokes.length) return;
+    state.signature = exportSignature();
+    createReport();
+  });
+  $('#btn-sig-later').addEventListener('click', () => {
+    if (state.reportCreated) { showScreen('screen-done'); return; }
+    state.signature = null;
+    createReport();
+  });
+  $('#btn-sig-back').addEventListener('click', () => showScreen('screen-doors'));
+
+  /* ---------- PDF ---------- */
+  // Standard-PDF-Schriften kennen nur Latin-1 – problematische Zeichen ersetzen
+  function pdfText(s) {
+    return String(s == null ? '' : s)
+      .replace(/[‘’‚′]/g, "'")
+      .replace(/[“”„″]/g, '"')
+      .replace(/[–—−]/g, '-')
+      .replace(/…/g, '...')
+      .replace(/€/g, 'EUR')
+      .replace(/[   ]/g, ' ')
+      .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, '');
+  }
+
+  function fileName() {
+    const clean = (s) => pdfText(s)
+      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')
+      .replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue').replace(/ß/g, 'ss')
+      .replace(/[^A-Za-z0-9-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'unbekannt';
+    return 'Abnahme_' + clean(state.meta.baustelle) + '_' + clean(state.meta.wohnung) + '_' + state.meta.datum + '.pdf';
+  }
+
+  function buildPdf() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    const m = state.meta;
+    const PW = 210, PH = 297, M = 15, CW = PW - 2 * M, BOTTOM = PH - 18;
+    const PRIMARY = [30, 58, 95], GRAY = [93, 102, 118], DARK = [26, 31, 41];
+    let y = M;
+
+    const ensure = (h) => { if (y + h > BOTTOM) { doc.addPage(); y = M + 2; } };
+    const setColor = (rgb) => doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+    const font = (style, size) => { doc.setFont('helvetica', style); doc.setFontSize(size); };
+    const lineH = (size) => size * 0.3528 * 1.25; // pt -> mm mit Zeilenabstand
+
+    function heading(text) {
+      ensure(16);
+      y += 3;
+      font('bold', 13); setColor(PRIMARY);
+      doc.text(pdfText(text), M, y + 4);
+      y += 7;
+      doc.setDrawColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]); doc.setLineWidth(0.5);
+      doc.line(M, y, M + CW, y);
+      y += 5;
+    }
+    function statusLabel(status, x, yTop, alignRight) {
+      const s = STATUS[status];
+      font('bold', 9);
+      const t = pdfText(s.label.toUpperCase());
+      const w = doc.getTextWidth(t) + 6, h = 5.8;
+      const x0 = alignRight ? x - w : x;
+      doc.setFillColor(s.rgb[0], s.rgb[1], s.rgb[2]);
+      doc.roundedRect(x0, yTop, w, h, 1.4, 1.4, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.text(t, x0 + 3, yTop + 4.1);
+      return w;
+    }
+    function fit(photo, maxW, maxH) {
+      const s = Math.min(maxW / photo.w, maxH / photo.h);
+      return { w: photo.w * s, h: photo.h * s };
+    }
+    function drawPhoto(photo, x, yTop, maxW, maxH, title) {
+      const f = fit(photo, maxW, maxH);
+      const px = x + (maxW - f.w) / 2;
+      doc.addImage(photo.data, 'JPEG', px, yTop, f.w, f.h, undefined, 'FAST');
+      doc.setDrawColor(200, 205, 212); doc.setLineWidth(0.2);
+      doc.rect(px, yTop, f.w, f.h);
+      return f;
+    }
+    function caption(photo, x, yTop, title) {
+      font('bold', 8.5); setColor(DARK);
+      doc.text(pdfText(title), x, yTop + 3);
+      font('normal', 7.5); setColor(GRAY);
+      doc.text(pdfText(fmtDateTime(photo.time)), x, yTop + 6.6);
+      doc.text(pdfText(fmtGps(photo.gps)), x, yTop + 10);
+    }
+
+    /* Kopfbereich */
+    doc.setFillColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
+    doc.rect(0, 0, PW, 26, 'F');
+    font('bold', 19); doc.setTextColor(255, 255, 255);
+    doc.text('Abnahmeprotokoll', M, 13);
+    font('normal', 10.5);
+    doc.text('Innentüren', M, 20);
+    font('normal', 9);
+    doc.text(pdfText('Erstellt: ' + fmtDateTime(new Date().toISOString())), PW - M, 20, { align: 'right' });
+    y = 34;
+
+    const metaRows = [
+      ['Baustelle', m.baustelle],
+      ['Wohnung', m.wohnung],
+      ['Datum', isoToDe(m.datum)],
+      ['Kunde', m.kunde || '-'],
+      ['Prüfer', m.pruefer]
+    ];
+    doc.setFillColor(243, 245, 248);
+    const metaLines = metaRows.map((r) => { font('normal', 11); return doc.splitTextToSize(pdfText(r[1]), CW - 40); });
+    const metaH = metaLines.reduce((a, l) => a + l.length * lineH(11) + 1.6, 0) + 6;
+    doc.roundedRect(M, y, CW, metaH, 2, 2, 'F');
+    let my = y + 4 + lineH(11) * 0.75;
+    metaRows.forEach((r, i) => {
+      font('bold', 11); setColor(GRAY);
+      doc.text(pdfText(r[0]) + ':', M + 4, my);
+      font('normal', 11); setColor(DARK);
+      doc.text(metaLines[i], M + 34, my);
+      my += metaLines[i].length * lineH(11) + 1.6;
+    });
+    y += metaH + 4;
+
+    const c = counts();
+    font('normal', 10); setColor(DARK);
+    doc.text(pdfText('Erfasste Türen: ' + state.doors.length + '   ·   In Ordnung: ' + c.ok +
+      '   ·   Mängel: ' + c.mangel + '   ·   Fehlende Teile: ' + c.fehlend), M, y + 3);
+    y += 8;
+
+    /* Zusammenfassung offene Punkte */
+    heading('Zusammenfassung - offene Punkte');
+    const open = state.doors.map((d, i) => ({ d, i })).filter((o) => o.d.status !== 'ok');
+    if (!open.length) {
+      font('bold', 11); setColor(STATUS.ok.rgb);
+      doc.text('Keine offenen Punkte - alle Türen sind in Ordnung.', M, y + 3);
+      y += 9;
+    } else {
+      open.forEach((o) => {
+        font('normal', 10);
+        const noteLines = doc.splitTextToSize(pdfText(o.d.note), CW - 46);
+        const h = Math.max(7, noteLines.length * lineH(10) + 2.5);
+        ensure(h + 2);
+        statusLabel(o.d.status, M, y, false);
+        font('bold', 10); setColor(DARK);
+        const title = doc.splitTextToSize(pdfText((o.i + 1) + '. ' + o.d.name), CW - 46);
+        doc.text(title[0], M + 40, y + 4.1);
+        font('normal', 10); setColor(DARK);
+        const startY = y + 4.1 + lineH(10);
+        doc.text(noteLines, M + 40, startY);
+        y = startY + noteLines.length * lineH(10) - lineH(10) + 3.5;
+        doc.setDrawColor(230, 233, 238); doc.setLineWidth(0.2);
+        doc.line(M, y - 1.2, M + CW, y - 1.2);
+        y += 1.5;
+      });
+    }
+
+    /* Türen im Detail */
+    const colGap = 6, colW = (CW - colGap) / 2, photoMaxH = 95, capH = 12;
+    // Überschrift nicht allein am Seitenende stehen lassen
+    {
+      const d0 = state.doors[0];
+      ensure(16 + 10 + Math.max(fit(d0.front, colW, photoMaxH).h, fit(d0.back, colW, photoMaxH).h) + capH + 14);
+    }
+    heading('Türen im Detail');
+    state.doors.forEach((d, i) => {
+      font('normal', 10);
+      const noteLines = d.note ? doc.splitTextToSize(pdfText('Notiz: ' + d.note), CW) : [];
+      const noteH = noteLines.length ? noteLines.length * lineH(10) + 2 : 0;
+      const f1 = fit(d.front, colW, photoMaxH), f2 = fit(d.back, colW, photoMaxH);
+      const rowH = Math.max(f1.h, f2.h);
+      // Titel, Notiz und Hauptfotos zusammenhalten; Detailfoto darf umbrechen
+      const blockH = 10 + noteH + rowH + capH + 4;
+      ensure(Math.min(blockH, BOTTOM - M - 4));
+
+      // Titel + Status
+      font('bold', 13); setColor(DARK);
+      const tLines = doc.splitTextToSize(pdfText((i + 1) + '. ' + d.name), CW - 50);
+      doc.text(tLines[0], M, y + 4.6);
+      statusLabel(d.status, M + CW, y, true);
+      y += 9;
+
+      if (noteLines.length) {
+        font('normal', 10); setColor(DARK);
+        doc.text(noteLines, M, y + 2.5);
+        y += noteH;
+      }
+
+      // Vorder- und Rückseite nebeneinander
+      ensure(rowH + capH);
+      drawPhoto(d.front, M, y, colW, photoMaxH);
+      drawPhoto(d.back, M + colW + colGap, y, colW, photoMaxH);
+      y += rowH + 1;
+      caption(d.front, M + (colW - f1.w) / 2, y, 'Vorderseite');
+      caption(d.back, M + colW + colGap + (colW - f2.w) / 2, y, 'Rückseite');
+      y += capH;
+
+      if (d.detail) {
+        const fd = fit(d.detail, colW, 70);
+        ensure(fd.h + capH + 4);
+        y += 2;
+        doc.addImage(d.detail.data, 'JPEG', M, y, fd.w, fd.h, undefined, 'FAST');
+        doc.setDrawColor(200, 205, 212); doc.setLineWidth(0.2);
+        doc.rect(M, y, fd.w, fd.h);
+        y += fd.h + 1;
+        caption(d.detail, M, y, 'Detailfoto');
+        y += capH;
+      }
+
+      y += 2;
+      doc.setDrawColor(210, 215, 222); doc.setLineWidth(0.3);
+      doc.line(M, y, M + CW, y);
+      y += 5;
+    });
+
+    /* Bestätigung + Unterschrift */
+    const confirmText = 'Hiermit bestätigt der Kunde die Abnahme der oben aufgeführten Innentüren in dem dokumentierten Zustand. ' +
+      (open.length
+        ? 'Die in der Zusammenfassung aufgeführten offenen Punkte (Mängel und fehlende Teile) werden nachgearbeitet bzw. nachgeliefert.'
+        : 'Es wurden keine Mängel oder fehlenden Teile festgestellt.');
+    font('normal', 10);
+    const cLines = doc.splitTextToSize(pdfText(confirmText), CW);
+    ensure(16 + cLines.length * lineH(10) + 50);
+    heading('Bestätigung');
+    font('normal', 10); setColor(DARK);
+    doc.text(cLines, M, y + 2);
+    y += cLines.length * lineH(10) + 6;
+
+    const sigW = 85, sigBoxH = 32;
+    const leftX = M, rightX = M + CW - sigW;
+    const lineY = y + sigBoxH;
+
+    // Ort, Datum
+    font('normal', 11); setColor(DARK);
+    doc.text(pdfText(m.baustelle.length > 40 ? isoToDe(m.datum) : m.baustelle + ', ' + isoToDe(m.datum)), leftX, lineY - 2, { maxWidth: sigW });
+    if (state.signature) {
+      const sgn = state.signature;
+      const s = Math.min(sigW / (sgn.w / 10), (sigBoxH - 2) / (sgn.h / 10));
+      const w = (sgn.w / 10) * s, h = (sgn.h / 10) * s;
+      doc.addImage(sgn.data, 'PNG', rightX + (sigW - w) / 2, lineY - h - 0.5, w, h);
+    }
+    doc.setDrawColor(60, 60, 60); doc.setLineWidth(0.35);
+    doc.line(leftX, lineY, leftX + sigW, lineY);
+    doc.line(rightX, lineY, rightX + sigW, lineY);
+    font('normal', 8.5); setColor(GRAY);
+    doc.text('Ort, Datum', leftX, lineY + 4);
+    doc.text(pdfText('Unterschrift Kunde' + (m.kunde ? ' (' + m.kunde + ')' : '')), rightX, lineY + 4, { maxWidth: sigW });
+    if (!state.signature) {
+      font('bold', 10); doc.setTextColor(198, 40, 40);
+      doc.text('Unterschrift ausstehend', rightX + sigW / 2, lineY - sigBoxH / 2, { align: 'center' });
+    }
+    y = lineY + 12;
+    font('normal', 8.5); setColor(GRAY);
+    doc.text(pdfText('Prüfer: ' + m.pruefer), M, y);
+
+    /* Fußzeile mit Seitenzahlen */
+    const n = doc.getNumberOfPages();
+    for (let p = 1; p <= n; p++) {
+      doc.setPage(p);
+      doc.setDrawColor(210, 215, 222); doc.setLineWidth(0.3);
+      doc.line(M, PH - 12, PW - M, PH - 12);
+      font('normal', 8); setColor(GRAY);
+      const left = doc.splitTextToSize(pdfText('Abnahme · ' + m.baustelle + ' · ' + m.wohnung + ' · ' + isoToDe(m.datum)), CW - 30)[0];
+      doc.text(left, M, PH - 7.5);
+      doc.text('Seite ' + p + ' von ' + n, PW - M, PH - 7.5, { align: 'right' });
+    }
+    return doc;
+  }
+
+  function waitForJsPdf(timeoutMs) {
+    return new Promise((resolve) => {
+      if (window.jspdf && window.jspdf.jsPDF) return resolve(true);
+      const t0 = Date.now();
+      const iv = setInterval(() => {
+        if (window.jspdf && window.jspdf.jsPDF) { clearInterval(iv); resolve(true); }
+        else if (Date.now() - t0 > timeoutMs) { clearInterval(iv); resolve(false); }
+      }, 200);
+    });
+  }
+
+  async function createReport() {
+    overlay(true, 'Bericht wird erstellt…');
+    await new Promise((r) => setTimeout(r, 60));
+    try {
+      const ok = await waitForJsPdf(8000);
+      if (!ok) throw new Error('jsPDF nicht geladen');
+      const doc = buildPdf();
+      const blob = doc.output('blob');
+      state.pdf = { blob, name: fileName() };
+      state.reportCreated = true;
+      overlay(false);
+      openDoneScreen();
+    } catch (e) {
+      overlay(false);
+      console.error(e);
+      alert(e && e.message === 'jsPDF nicht geladen'
+        ? 'Die PDF-Bibliothek konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.'
+        : 'Der Bericht konnte nicht erstellt werden: ' + (e && e.message ? e.message : e));
+    }
+  }
+
+  /* ---------- Fertig ---------- */
+  function openDoneScreen() {
+    const m = state.meta;
+    const c = counts();
+    $('#done-sub').textContent = m.baustelle + ' · ' + m.wohnung;
+    $('#done-info').innerHTML =
+      '<p style="margin:0 0 6px;font-weight:700;word-break:break-all">' + esc(state.pdf.name) + '</p>' +
+      '<p class="muted" style="margin:0">' + state.doors.length + ' ' + (state.doors.length === 1 ? 'Tür' : 'Türen') +
+      ' · ' + (c.mangel + c.fehlend) + ' offene Punkte · ' + Math.max(1, Math.round(state.pdf.blob.size / 1024)) + ' KB</p>';
+    $('#done-pending').style.display = state.signature ? 'none' : '';
+    $('#btn-sign-now').style.display = state.signature ? 'none' : '';
+    showScreen('screen-done');
+  }
+
+  function downloadPdf() {
+    const url = URL.createObjectURL(state.pdf.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = state.pdf.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  $('#btn-share').addEventListener('click', async () => {
+    if (!state.pdf) return;
+    const m = state.meta;
+    let file = null;
+    try { file = new File([state.pdf.blob], state.pdf.name, { type: 'application/pdf' }); } catch (e) {}
+    if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: state.pdf.name,
+          text: 'Abnahmeprotokoll ' + m.baustelle + ', ' + m.wohnung + ' vom ' + isoToDe(m.datum)
+        });
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+      }
+    }
+    downloadPdf();
+    toast('Teilen nicht verfügbar – PDF wird heruntergeladen');
+  });
+  $('#btn-download').addEventListener('click', () => { if (state.pdf) downloadPdf(); });
+  $('#btn-sign-now').addEventListener('click', () => openSignScreen());
+
+  function resetFlat() {
+    state.doors = [];
+    state.signature = null;
+    state.pdf = null;
+    state.reportCreated = false;
+    current = newDoor();
+  }
+  $('#btn-next-flat').addEventListener('click', () => {
+    resetFlat();
+    initStart({ keepSite: true, keepDate: true });
+    showScreen('screen-start');
+    setTimeout(() => $('#f-wohnung').focus(), 300);
+  });
+  $('#btn-new').addEventListener('click', () => {
+    resetFlat();
+    state.meta = null;
+    initStart({});
+    showScreen('screen-start');
+    if (geo.last) trySuggestNearest(geo.last);
+  });
+
+  /* ---------- Warnung beim Verlassen ---------- */
+  window.addEventListener('beforeunload', (e) => {
+    if ((state.doors.length > 0 || isDirty(current)) && !state.reportCreated) {
+      e.preventDefault();
+      e.returnValue = 'Es wurden Türen erfasst, aber noch kein Bericht erstellt.';
+      return e.returnValue;
+    }
+  });
+
+  /* ---------- Start ---------- */
+  initStart({});
+  geo.start();
+})();
+</script>
+</body>
+</html>
