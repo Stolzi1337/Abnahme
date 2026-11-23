@@ -282,6 +282,14 @@
   .progress .bar { height: 10px; background: #dde3ea; border-radius: 6px; margin-top: 6px; overflow: hidden; }
   .progress .bar i { display: block; height: 100%; background: var(--ok); }
   .card.empty { color: var(--muted); text-align: center; }
+  .pcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .gal-btn {
+    position: relative; display: flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 46px; border-radius: 12px; border: 2px solid var(--primary); background: #fff;
+    color: var(--primary); font-weight: 700; font-size: 15px; cursor: pointer;
+  }
+  .gal-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .gal-tag { display: inline-block; background: #e8f0fb; color: var(--primary); border-radius: 6px; padding: 0 5px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -719,6 +727,109 @@
   // Browser bitten, die Daten nicht automatisch zu löschen
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 
+  /* ---------- Fotos aus der Galerie (Aufnahmedatum + GPS aus EXIF) ---------- */
+  // Liest Aufnahmezeit und GPS aus den EXIF-Daten einer JPEG-Datei (sofern vorhanden)
+  async function readExif(file) {
+    try {
+      const buf = await file.slice(0, 256 * 1024).arrayBuffer();
+      const v = new DataView(buf);
+      if (v.byteLength < 4 || v.getUint16(0) !== 0xFFD8) return {};
+      let off = 2;
+      while (off + 4 < v.byteLength) {
+        const marker = v.getUint16(off);
+        const len = v.getUint16(off + 2);
+        if (marker === 0xFFE1 && v.getUint32(off + 4) === 0x45786966) return parseTiff(v, off + 10);
+        if ((marker & 0xFF00) !== 0xFF00 || marker === 0xFFDA) break;
+        off += 2 + len;
+      }
+    } catch (e) { /* ohne EXIF weiter */ }
+    return {};
+  }
+  function parseTiff(v, t) {
+    const le = v.getUint16(t) === 0x4949;
+    const u16 = (o) => v.getUint16(t + o, le);
+    const u32 = (o) => v.getUint32(t + o, le);
+    const readIfd = (o) => {
+      const tags = {};
+      if (!o || t + o + 2 > v.byteLength) return tags;
+      const n = u16(o);
+      for (let i = 0; i < n; i++) {
+        const e = o + 2 + i * 12;
+        if (t + e + 12 > v.byteLength) break;
+        tags[u16(e)] = { type: u16(e + 2), count: u32(e + 4), voff: e + 8 };
+      }
+      return tags;
+    };
+    const ascii = (tag) => {
+      if (!tag) return null;
+      const at = tag.count > 4 ? u32(tag.voff) : tag.voff;
+      let str = '';
+      for (let i = 0; i < tag.count - 1 && t + at + i < v.byteLength; i++) str += String.fromCharCode(v.getUint8(t + at + i));
+      return str;
+    };
+    const rationals = (tag) => {
+      if (!tag) return null;
+      const at = u32(tag.voff), out = [];
+      for (let i = 0; i < tag.count; i++) {
+        const den = u32(at + i * 8 + 4);
+        out.push(den ? u32(at + i * 8) / den : 0);
+      }
+      return out;
+    };
+    const ifd0 = readIfd(u32(4));
+    const exif = ifd0[0x8769] ? readIfd(u32(ifd0[0x8769].voff)) : {};
+    const res = {};
+    const dt = ascii(exif[0x9003]) || ascii(exif[0x9004]) || ascii(ifd0[0x0132]);
+    const m = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/.exec(dt || '');
+    if (m) {
+      const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+      if (!isNaN(d) && m[1] !== '0000') res.time = d.toISOString();
+    }
+    if (ifd0[0x8825]) {
+      const g = readIfd(u32(ifd0[0x8825].voff));
+      const lat = rationals(g[2]), lon = rationals(g[4]);
+      if (lat && lon && lat.length === 3 && lon.length === 3) {
+        let la = lat[0] + lat[1] / 60 + lat[2] / 3600, lo = lon[0] + lon[1] / 60 + lon[2] / 3600;
+        if (ascii(g[1]) === 'S') la = -la;
+        if (ascii(g[3]) === 'W') lo = -lo;
+        if ((la || lo) && Math.abs(la) <= 90 && Math.abs(lo) <= 180) {
+          const err = g[0x1F] ? rationals(g[0x1F]) : null;
+          res.gps = { lat: la, lon: lo, acc: err && err[0] ? err[0] : null };
+        }
+      }
+    }
+    return res;
+  }
+
+  async function processGalleryPhoto(file) {
+    const exif = await readExif(file);
+    const { img, url } = await loadImage(file);
+    try {
+      const w0 = img.naturalWidth, h0 = img.naturalHeight;
+      const scale = Math.min(1, 1280 / Math.max(w0, h0));
+      const w = Math.max(1, Math.round(w0 * scale)), h = Math.max(1, Math.round(h0 * scale));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      return {
+        data: c.toDataURL('image/jpeg', 0.7), w, h,
+        source: 'galerie',
+        timeFrom: exif.time ? 'exif' : 'datei',
+        time: exif.time || new Date(file.lastModified || Date.now()).toISOString(),
+        gps: exif.gps || null
+      };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+  function gpsText(g, gallery) {
+    if (!g) return gallery ? 'GPS: nicht im Foto gespeichert' : 'GPS: nicht verfügbar';
+    return 'GPS: ' + g.lat.toFixed(6) + ', ' + g.lon.toFixed(6) + (g.acc ? ' (±' + Math.round(g.acc) + ' m)' : '') + (gallery ? ' (aus Foto)' : '');
+  }
+
   /* ---------- Zustand ---------- */
   let proto = null;       // aktuelles Protokoll
   let pdf = null;         // { blob, name }
@@ -850,17 +961,24 @@
   }
   function slotInner(photo, label) {
     if (photo) {
+      const gal = photo.source === 'galerie';
       return '<img alt="' + esc(label) + '" src="' + photo.data + '">' +
         '<span class="retake">Neu</span>' +
-        '<div class="meta"><b>✔ ' + esc(label) + '</b><br>' + esc(fmtDateTime(photo.time).replace(', ', ' ')) +
-        '<br>' + esc(photo.gps ? '±' + Math.round(photo.gps.acc) + ' m GPS' : 'ohne GPS') + '</div>';
+        '<div class="meta"><b>✔ ' + esc(label) + '</b>' + (gal ? ' <span class="gal-tag">Galerie</span>' : '') +
+        '<br>' + (gal && photo.timeFrom !== 'exif' ? 'Datei: ' : '') + esc(fmtDateTime(photo.time).replace(', ', ' ')) +
+        '<br>' + esc(photo.gps ? (photo.gps.acc ? '±' + Math.round(photo.gps.acc) + ' m GPS' : 'GPS aus Foto') : 'ohne GPS') + '</div>';
     }
     return '<div class="ico">📷</div><div class="lbl">' + esc(label) + '</div><div class="sub">antippen zum Fotografieren</div>';
   }
   function slotHtml(e, key, label) {
-    return '<label class="slot' + (e[key] ? ' has' : '') + '" data-id="' + esc(e.id) + '" data-key="' + key + '" data-label="' + label + '">' +
+    const slot = '<label class="slot' + (e[key] ? ' has' : '') + '" data-id="' + esc(e.id) + '" data-key="' + key + '" data-label="' + label + '">' +
       '<input type="file" accept="image/*" capture="environment">' +
       '<div class="slot-body">' + slotInner(e[key], label) + '</div></label>';
+    if (key !== 'vorher') return '<div class="pcol">' + slot + '</div>';
+    // Vorher-Fotos dürfen auch aus der Galerie kommen
+    return '<div class="pcol">' + slot +
+      '<label class="gal-btn">🖼 Aus Galerie<input type="file" accept="image/*" data-gallery="1" data-id="' + esc(e.id) +
+      '" data-key="' + key + '" data-label="' + label + '"></label></div>';
   }
   function renderEntries() {
     const box = $('#entries');
@@ -943,7 +1061,10 @@
   $('#entries').addEventListener('change', async (ev) => {
     const input = ev.target;
     if (!input.matches('input[type=file]')) return;
-    const slot = input.closest('.slot');
+    const gallery = input.dataset.gallery === '1';
+    const slot = gallery
+      ? input.closest('.pcol').querySelector('.slot')
+      : input.closest('.slot');
     const file = input.files && input.files[0];
     input.value = '';
     if (!file || !slot) return;
@@ -953,7 +1074,7 @@
     slot.classList.add('busy');
     busyPhotos++;
     try {
-      const photo = await processPhoto(file);
+      const photo = gallery ? await processGalleryPhoto(file) : await processPhoto(file);
       e[slot.dataset.key] = photo;
       await repo.put(p);
       if (proto === p) {
@@ -963,7 +1084,8 @@
         renderHead();
       }
     } catch (err) {
-      alert('Das Foto konnte nicht verarbeitet werden. Bitte erneut versuchen.');
+      alert('Das Foto konnte nicht verarbeitet werden. Bitte erneut versuchen' +
+        (gallery ? ' oder ein anderes Bild wählen (z. B. JPEG statt HEIC).' : '.'));
     } finally {
       busyPhotos--;
       slot.classList.remove('busy');
@@ -1058,10 +1180,11 @@
           doc.setDrawColor(200, 205, 212); doc.setLineWidth(0.2);
           doc.rect(px, y, f.w, f.h);
           const cy = y + rowH + 1;
-          font('bold', 8.5); setColor(DARK); doc.text(label, px, cy + 3);
+          const gal = ph.source === 'galerie';
+          font('bold', 8.5); setColor(DARK); doc.text(label + (gal ? ' (aus Galerie)' : ''), px, cy + 3);
           font('normal', 7.5); setColor(GRAY);
-          doc.text(pdfText(fmtDateTime(ph.time)), px, cy + 6.6);
-          doc.text(pdfText(fmtGps(ph.gps)), px, cy + 10);
+          doc.text(pdfText((gal ? (ph.timeFrom === 'exif' ? 'Aufnahme: ' : 'Dateidatum: ') : '') + fmtDateTime(ph.time)), px, cy + 6.6);
+          doc.text(pdfText(gpsText(ph.gps, gal)), px, cy + 10);
         } else {
           doc.setDrawColor(180, 188, 200); doc.setLineWidth(0.3);
           doc.setLineDashPattern([1.5, 1.5], 0);

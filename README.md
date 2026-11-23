@@ -24,6 +24,7 @@ Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen**, **🪟 Fenst
 
 - Neues Protokoll mit Datum, Baustelle (GPS-Vorschlag), Bereich und Prüfer
 - Positionen anlegen, je ein **Vorher-** und ein **Nachher-Foto** mit Uhrzeit und GPS, dazu eine optionale Notiz
+- Vorher-Fotos können auch **aus der Handy-Galerie** kommen. Aufnahmedatum und GPS werden dann aus den Bilddaten (EXIF) gelesen. Fehlen sie, steht im PDF „Dateidatum“ bzw. „GPS: nicht im Foto gespeichert“, und das Foto ist als „aus Galerie“ gekennzeichnet.
 - **Wird automatisch auf dem Gerät gespeichert** (IndexedDB). Vorher-Fotos lassen sich heute aufnehmen, die Nachher-Fotos Tage später ergänzen: Protokoll in der Übersicht antippen und weitermachen.
 - Ohne Status und ohne Unterschrift. Das PDF zeigt Vorher und Nachher nebeneinander, fehlende Fotos sind gekennzeichnet.
 - Dateiname: `Fotoprotokoll_<Baustelle>_<Bereich>_<Datum>.pdf`
