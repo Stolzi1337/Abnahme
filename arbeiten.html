@@ -170,6 +170,37 @@
   .sbtn.sel[data-status=fehlend] { background: var(--miss); }
   .status-btns.invalid { outline: 3px solid var(--bad); outline-offset: 4px; border-radius: 14px; background: none !important; }
 
+  .gewerk { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .gbtn {
+    min-height: 54px; border-radius: 14px; border: 2px solid var(--primary); background: #fff;
+    color: var(--primary); font: inherit; font-weight: 700; font-size: 17px; cursor: pointer; touch-action: manipulation;
+  }
+  .gbtn.sel { background: var(--primary); color: #fff; }
+  #cl-field { display: none; }
+  #cl-field.show { display: block; }
+  .cl-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .cl-all {
+    min-height: 44px; padding: 0 14px; border-radius: 12px; border: 2px solid var(--ok);
+    background: #fff; color: var(--ok); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
+  }
+  #checklist { border: 2px solid transparent; border-radius: 14px; }
+  .cl-row { display: flex; align-items: center; gap: 6px; padding: 8px 0; border-bottom: 1px solid #edf0f4; flex-wrap: wrap; }
+  .cl-row:last-child { border-bottom: none; }
+  .cl-row .cl-l { flex: 1 1 150px; min-width: 0; font-size: 16px; font-weight: 600; }
+  .cl-row .cl-bs { display: flex; gap: 6px; margin-left: auto; }
+  .cl-btn {
+    flex: none; width: 64px; min-height: 50px; border-radius: 12px; border: 2px solid;
+    background: #fff; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; touch-action: manipulation;
+  }
+  .cl-btn.ok { color: var(--ok); border-color: var(--ok); }
+  .cl-btn.nio { color: var(--bad); border-color: var(--bad); }
+  .cl-btn.na { color: var(--muted); border-color: #b8c2cf; }
+  .cl-btn.ok.sel { background: var(--ok); color: #fff; }
+  .cl-btn.nio.sel { background: var(--bad); color: #fff; }
+  .cl-btn.na.sel { background: #7b8494; border-color: #7b8494; color: #fff; }
+  #checklist.invalid { border-color: var(--bad); background: #fff7f7; padding: 0 8px; }
+  .nio-list { color: var(--bad); font-weight: 600; }
+
   .note-box { display: none; margin-top: 16px; }
   .note-box.show { display: block; }
   .note-wrap { position: relative; }
@@ -331,6 +362,11 @@
         <input type="text" id="d-name" autocomplete="off" placeholder="z. B. Malerarbeiten Flur, Fliesen Bad" enterkeyhint="done">
       </label>
 
+      <div class="field" style="margin-bottom:14px">
+        <span style="display:block;font-weight:600;margin-bottom:6px;font-size:15px">Gewerk</span>
+        <div class="gewerk" id="gewerk"></div>
+      </div>
+
       <div class="field">
         <span style="display:block;font-weight:600;margin-bottom:6px;font-size:15px">Fotos <em style="font-style:normal;color:var(--bad)">*</em> <span style="font-weight:400;color:var(--muted)">(Übersicht Pflicht)</span></span>
         <div class="photos">
@@ -343,6 +379,14 @@
             <div class="slot-body"></div>
           </label>
         </div>
+      </div>
+
+      <div class="field" id="cl-field" style="margin-top:14px">
+        <div class="cl-head">
+          <span style="font-weight:600;font-size:15px" id="cl-title">Prüfliste <em style="font-style:normal;color:var(--bad)">*</em></span>
+          <button type="button" class="cl-all" id="btn-cl-all">✔ Alle i.O.</button>
+        </div>
+        <div id="checklist"></div>
       </div>
 
       <div class="field" style="margin-top:14px">
@@ -624,11 +668,12 @@
   };
   let current = newDoor();
 
-  function newDoor() {
-    return { id: Date.now() + Math.random(), name: '', front: null, back: null, status: null, note: '', detail: null };
+  function newDoor(gewerk) {
+    return { id: Date.now() + Math.random(), name: '', front: null, back: null, status: null, note: '', detail: null,
+      gewerk: gewerk || 'allgemein', checks: {} };
   }
   function isDirty(d) {
-    return !!(d.name.trim() || d.front || d.back || d.status || d.note.trim() || d.detail);
+    return !!(d.name.trim() || d.front || d.back || d.status || d.note.trim() || d.detail || Object.keys(d.checks).length);
   }
 
   /* ---------- Prüfer (mehrere) ---------- */
@@ -777,12 +822,14 @@
     $('#d-name').value = current.name;
     $('#d-note').value = current.note;
     $$('.slot').forEach(renderSlot);
+    renderGewerk();
+    renderChecklist();
     $$('.sbtn').forEach((b) => b.classList.toggle('sel', b.dataset.status === current.status));
     const needNote = current.status === 'mangel' || current.status === 'fehlend';
     $('#note-box').classList.toggle('show', needNote);
     $('#note-label').innerHTML = (current.status === 'fehlend' ? 'Welche Teile fehlen?' : 'Beschreibung des Mangels') + ' <em>*</em>';
     $('#door-errors').classList.remove('show');
-    $$('#door-form .invalid, #status-btns.invalid').forEach((el) => el.classList.remove('invalid'));
+    $$('#door-form .invalid, #status-btns.invalid, #checklist.invalid').forEach((el) => el.classList.remove('invalid'));
   }
 
   function renderDoorList() {
@@ -796,6 +843,8 @@
         '<img alt="" src="' + d.front.data + '">' +
         '<div class="dn"><b>' + (i + 1) + '. ' + esc(d.name) + '</b>' +
           '<span class="badge ' + d.status + '">' + esc(STATUS[d.status].label) + '</span>' +
+          (d.gewerk !== 'allgemein' ? '<small>Gewerk: ' + esc(GEWERKE[d.gewerk].label) + '</small>' : '') +
+          (nioLabels(d).length ? '<small class="nio-list">n.i.O.: ' + esc(nioLabels(d).join(', ')) + '</small>' : '') +
           (d.note ? '<small>' + esc(d.note) + '</small>' : '') +
         '</div>' +
         '<button class="del" type="button" data-idx="' + i + '" aria-label="Position löschen">🗑</button>' +
@@ -830,6 +879,81 @@
     $('#note-box').classList.toggle('show', needNote);
     $('#note-label').innerHTML = (current.status === 'fehlend' ? 'Welche Teile fehlen?' : 'Beschreibung des Mangels') + ' <em>*</em>';
     if (!needNote) stopDictation();
+    refreshDoorErrors();
+  });
+
+  /* ---------- Gewerke & Prüflisten ---------- */
+  // Weitere Gewerke lassen sich hier ergänzen. na: true = Punkt kann "entfällt" sein.
+  const GEWERKE = {
+    allgemein: { label: 'Allgemein', checks: [] },
+    fliesen: {
+      label: 'Fliesen',
+      checks: [
+        { k: 'fugenbild', l: 'Fugenbild gleichmäßig (Breite, Flucht)' },
+        { k: 'fugen', l: 'Fugen vollständig gefüllt, ohne Risse' },
+        { k: 'ebenheit', l: 'Ebenheit, kein Kantenversatz' },
+        { k: 'hohlstellen', l: 'Fliesen fest, kein Hohlklang' },
+        { k: 'schaeden', l: 'Keine beschädigten Fliesen' },
+        { k: 'silikon', l: 'Silikonfugen sauber und dicht' },
+        { k: 'gefaelle', l: 'Gefälle zum Ablauf', na: true },
+        { k: 'sauber', l: 'Gereinigt, keine Mörtelreste' }
+      ]
+    }
+  };
+  function checksOf(d) { return (GEWERKE[d.gewerk] || GEWERKE.allgemein).checks; }
+  function nioLabels(d) {
+    return checksOf(d).filter((c) => d.checks && d.checks[c.k] === 'nio').map((c) => c.l);
+  }
+  function checklistComplete(d) {
+    return checksOf(d).every((c) => ['ok', 'nio', 'na'].indexOf(d.checks[c.k]) >= 0);
+  }
+  function renderGewerk() {
+    $('#gewerk').innerHTML = Object.keys(GEWERKE).map((g) =>
+      '<button type="button" class="gbtn' + (current.gewerk === g ? ' sel' : '') + '" data-g="' + g + '">' + esc(GEWERKE[g].label) + '</button>'
+    ).join('');
+  }
+  function renderChecklist() {
+    const checks = checksOf(current);
+    $('#cl-field').classList.toggle('show', checks.length > 0);
+    $('#cl-title').innerHTML = 'Prüfliste ' + esc(GEWERKE[current.gewerk].label) + ' <em style="font-style:normal;color:var(--bad)">*</em>';
+    $('#checklist').innerHTML = checks.map((c) => {
+      const v = current.checks[c.k];
+      const btn = (val, cls, txt) => '<button type="button" class="cl-btn ' + cls + (v === val ? ' sel' : '') +
+        '" data-k="' + c.k + '" data-v="' + val + '">' + txt + '</button>';
+      return '<div class="cl-row"><span class="cl-l">' + esc(c.l) + '</span><span class="cl-bs">' +
+        btn('ok', 'ok', 'i.O.') + btn('nio', 'nio', 'n.i.O.') + (c.na ? btn('na', 'na', 'entf.') : '') + '</span></div>';
+    }).join('');
+  }
+  function setStatus(st) {
+    const b = document.querySelector('.sbtn[data-status="' + st + '"]');
+    if (b) b.click();
+  }
+  $('#gewerk').addEventListener('click', (e) => {
+    const b = e.target.closest('.gbtn');
+    if (!b || b.dataset.g === current.gewerk) return;
+    current.gewerk = b.dataset.g;
+    current.checks = {};
+    renderGewerk();
+    renderChecklist();
+    $('#checklist').classList.remove('invalid');
+    refreshDoorErrors();
+  });
+  $('#checklist').addEventListener('click', (e) => {
+    const b = e.target.closest('.cl-btn');
+    if (!b) return;
+    current.checks[b.dataset.k] = b.dataset.v;
+    renderChecklist();
+    if (checklistComplete(current)) $('#checklist').classList.remove('invalid');
+    // Ein Prüfpunkt n.i.O. -> Zustand "Mangel" vorschlagen
+    if (b.dataset.v === 'nio' && (!current.status || current.status === 'ok')) setStatus('mangel');
+    refreshDoorErrors();
+  });
+  $('#btn-cl-all').addEventListener('click', () => {
+    // Punkte mit "entfällt" bleiben so, alle offenen werden i.O.
+    checksOf(current).forEach((c) => { if (current.checks[c.k] !== 'na') current.checks[c.k] = 'ok'; });
+    renderChecklist();
+    $('#checklist').classList.remove('invalid');
+    if (!current.status) setStatus('ok');
     refreshDoorErrors();
   });
 
@@ -949,13 +1073,17 @@
     const marks = [];
     if (!current.name.trim()) { errs.push('Bezeichnung der Position'); marks.push($('#d-name')); }
     if (!current.front) { errs.push('Übersichtsfoto'); marks.push($('#slot-front')); }
+    if (!checklistComplete(current)) { errs.push('Prüfliste vollständig ausfüllen'); marks.push($('#checklist')); }
     if (!current.status) { errs.push('Zustand auswählen'); marks.push($('#status-btns')); }
+    else if (current.status === 'ok' && nioLabels(current).length) {
+      errs.push('Zustand „In Ordnung“ passt nicht – ein Prüfpunkt ist n.i.O.'); marks.push($('#status-btns'));
+    }
     if ((current.status === 'mangel' || current.status === 'fehlend') && !current.note.trim()) {
       errs.push(current.status === 'mangel' ? 'Notiz zum Mangel' : 'Notiz zu den fehlenden Teilen');
       marks.push($('#d-note'));
     }
     if (mark) {
-      $$('#door-form .invalid, #status-btns.invalid').forEach((el) => el.classList.remove('invalid'));
+      $$('#door-form .invalid, #status-btns.invalid, #checklist.invalid').forEach((el) => el.classList.remove('invalid'));
       marks.forEach((el) => el.classList.add('invalid'));
       const box = $('#door-errors');
       if (errs.length) {
@@ -974,7 +1102,7 @@
     d.note = d.status === 'ok' ? '' : d.note.trim();
     if (d.status === 'ok') d.detail = null;
     state.doors.push(d);
-    current = newDoor();
+    current = newDoor(d.gewerk);
     renderDoorForm();
     renderDoorList();
     renderHeader();
@@ -1150,7 +1278,7 @@
       '</dl>';
     if (open.length) {
       html += '<h3 style="margin:14px 0 6px;font-size:16px">Offene Punkte</h3><ul class="summary-list">' +
-        open.map((d) => '<li><b>' + esc(d.name) + '</b> – <span class="badge ' + d.status + '">' + esc(STATUS[d.status].label) + '</span><br>' + esc(d.note) + '</li>').join('') +
+        open.map((d) => '<li><b>' + esc(d.name) + '</b> – <span class="badge ' + d.status + '">' + esc(STATUS[d.status].label) + '</span><br>' + (nioLabels(d).length ? '<span class="nio-list">n.i.O.: ' + esc(nioLabels(d).join(', ')) + '</span><br>' : '') + esc(d.note) + '</li>').join('') +
         '</ul>';
     } else {
       html += '<p style="margin:12px 0 0;color:var(--ok);font-weight:700">Keine offenen Punkte – alle Positionen in Ordnung.</p>';
@@ -1317,7 +1445,8 @@
     } else {
       open.forEach((o) => {
         font('normal', 10);
-        const noteLines = doc.splitTextToSize(pdfText(o.d.note), CW - 46);
+        const nio = nioLabels(o.d);
+        const noteLines = doc.splitTextToSize(pdfText(o.d.note + (nio.length ? ' (Nicht i.O.: ' + nio.join(', ') + ')' : '')), CW - 46);
         const h = Math.max(7, noteLines.length * lineH(10) + 2.5);
         ensure(h + 2);
         statusLabel(o.d.status, M, y, false);
@@ -1349,7 +1478,9 @@
       const f1 = fit(d.front, colW, photoMaxH), f2 = d.back ? fit(d.back, colW, photoMaxH) : { w: 0, h: 0 };
       const rowH = Math.max(f1.h, f2.h);
       // Titel, Notiz und Hauptfotos zusammenhalten; Detailfoto darf umbrechen
-      const blockH = 10 + noteH + rowH + capH + 4;
+      const dChecks = checksOf(d);
+      const checkH = dChecks.length ? Math.ceil(dChecks.length / 2) * 5 + 7 : 0;
+      const blockH = 10 + checkH + noteH + rowH + capH + 4;
       ensure(Math.min(blockH, BOTTOM - M - 4));
 
       // Titel + Status
@@ -1358,6 +1489,26 @@
       doc.text(tLines[0], M, y + 4.6);
       statusLabel(d.status, M + CW, y, true);
       y += 9;
+
+      // Prüfliste des Gewerks (zweispaltig)
+      if (dChecks.length) {
+        font('bold', 9); setColor(GRAY);
+        doc.text(pdfText('Prüfliste ' + GEWERKE[d.gewerk].label), M, y + 1);
+        dChecks.forEach((c, ci) => {
+          const col = ci % 2, rowI = Math.floor(ci / 2);
+          const x = M + col * (CW / 2), yy = y + 4 + rowI * 5 + 3;
+          const v = d.checks[c.k];
+          const rgb = v === 'nio' ? STATUS.mangel.rgb : v === 'na' ? [123, 132, 148] : STATUS.ok.rgb;
+          doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+          doc.roundedRect(x, yy - 2.9, 11, 3.8, 0.8, 0.8, 'F');
+          font('bold', 7); doc.setTextColor(255, 255, 255);
+          doc.text(v === 'nio' ? 'n.i.O.' : v === 'na' ? 'entf.' : 'i.O.', x + 5.5, yy - 0.2, { align: 'center' });
+          font(v === 'nio' ? 'bold' : 'normal', 9);
+          setColor(v === 'nio' ? STATUS.mangel.rgb : v === 'na' ? GRAY : DARK);
+          doc.text(pdfText(c.l), x + 13, yy);
+        });
+        y += checkH;
+      }
 
       if (noteLines.length) {
         font('normal', 10); setColor(DARK);

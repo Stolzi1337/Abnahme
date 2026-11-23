@@ -25,6 +25,8 @@ Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen**, **🪟 Fenst
 - Feld **Wohnung / Bereich**, damit auch Treppenhaus, Keller usw. passen
 - **Übersichtsfoto** ist Pflicht, ein zweites Foto („Weitere Ansicht“) optional
 - Zustand, Notiz mit Diktat und Detailfoto wie bei den Türen
+- **Gewerk** pro Position: „Allgemein“ (ohne Prüfliste) oder „Fliesen“. Das gewählte Gewerk bleibt für die nächste Position eingestellt.
+- **Prüfliste Fliesen:** Fugenbild gleichmäßig, Fugen gefüllt ohne Risse, Ebenheit/kein Kantenversatz, kein Hohlklang, keine beschädigten Fliesen, Silikonfugen sauber und dicht, Gefälle zum Ablauf (auch „entfällt“ möglich), gereinigt. Weitere Gewerke werden in `arbeiten.html` unter `GEWERKE` ergänzt.
 - Dateiname: `Abnahme_Arbeiten_<Baustelle>_<Bereich>_<Datum>.pdf`
 
 ## Ablauf (Türen)
