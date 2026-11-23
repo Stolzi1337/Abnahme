@@ -1,6 +1,6 @@
 # Abnahme
 
-Mobile Web-Apps zur Abnahme von Innentüren, Fenstern und allgemeinen Arbeiten für **Jonas Stolzenburg Baukonzept**.
+Mobile Web-Apps zur Abnahme von Innentüren, Fenstern und allgemeinen Arbeiten sowie Vorher/Nachher-Fotoprotokolle für **Jonas Stolzenburg Baukonzept**.
 Jede App steckt in einer einzigen HTML-Datei (HTML, CSS und JavaScript), ohne Build-Schritt.
 
 | App | Datei | Live |
@@ -8,8 +8,9 @@ Jede App steckt in einer einzigen HTML-Datei (HTML, CSS und JavaScript), ohne Bu
 | Türen | `index.html` | https://stolzi1337.github.io/Abnahme/ |
 | Fenster | `fenster.html` | https://stolzi1337.github.io/Abnahme/fenster.html |
 | Allgemeine Arbeiten | `arbeiten.html` | https://stolzi1337.github.io/Abnahme/arbeiten.html |
+| Vorher / Nachher | `vorher-nachher.html` | https://stolzi1337.github.io/Abnahme/vorher-nachher.html |
 
-Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen**, **🪟 Fenster** und **🔨 Arbeiten**. Gespeicherte Baustellen und Prüfer gelten für alle Apps.
+Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen**, **🪟 Fenster** und **🔨 Arbeiten** und **📷 Vorher/Nachher**. Gespeicherte Baustellen und Prüfer gelten für alle Apps.
 
 ## Fenster-App: Unterschiede
 
@@ -18,6 +19,15 @@ Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen**, **🪟 Fenst
 - Wird ein Punkt als n.i.O. markiert, schlägt die App „Mangel“ vor. „In Ordnung“ ist dann nicht mehr möglich.
 - Das PDF zeigt die Prüfliste je Fenster. Die n.i.O.-Punkte erscheinen zusätzlich in der Zusammenfassung.
 - Dateiname: `Abnahme_Fenster_<Baustelle>_<Wohnung>_<Datum>.pdf`
+
+## Vorher/Nachher: einfaches Fotoprotokoll
+
+- Neues Protokoll mit Datum, Baustelle (GPS-Vorschlag), Bereich und Prüfer
+- Positionen anlegen, je ein **Vorher-** und ein **Nachher-Foto** mit Uhrzeit und GPS, dazu eine optionale Notiz
+- **Wird automatisch auf dem Gerät gespeichert** (IndexedDB). Vorher-Fotos lassen sich heute aufnehmen, die Nachher-Fotos Tage später ergänzen: Protokoll in der Übersicht antippen und weitermachen.
+- Ohne Status und ohne Unterschrift. Das PDF zeigt Vorher und Nachher nebeneinander, fehlende Fotos sind gekennzeichnet.
+- Dateiname: `Fotoprotokoll_<Baustelle>_<Bereich>_<Datum>.pdf`
+- Gespeicherte Protokolle bleiben auf dem Gerät, bis man sie in der Übersicht löscht (🗑).
 
 ## Arbeiten-App: Unterschiede
 
@@ -45,6 +55,7 @@ Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen**, **🪟 Fenst
 | `index.html` | Türen-App |
 | `fenster.html` | Fenster-App |
 | `arbeiten.html` | App für allgemeine Arbeiten |
+| `vorher-nachher.html` | Vorher/Nachher-Fotoprotokoll |
 | `logo.png` | Logo für PDF und Startbildschirm. Zum Austauschen einfach ersetzen, am besten ein quadratisches PNG. |
 | `icon-180.png`, `icon-512.png` | App-Symbol für den Handy-Startbildschirm |
 | `manifest*.webmanifest` | Damit die Apps installiert wie eigene Apps laufen |

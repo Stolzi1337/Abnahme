@@ -1,0 +1,24 @@
+{
+  "name": "Vorher/Nachher – Jonas Stolzenburg Baukonzept",
+  "short_name": "Vorher/Nachher",
+  "lang": "de",
+  "start_url": "vorher-nachher.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef1f5",
+  "theme_color": "#1e3a5f",
+  "icons": [
+    {
+      "src": "icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

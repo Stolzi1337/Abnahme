@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Vorher/Nachher">
+<title>Vorher Nachher</title>
+<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest-vorher-nachher.webmanifest">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<style>
+  :root {
+    --primary: #1e3a5f;
+    --primary-dark: #142a46;
+    --bg: #eef1f5;
+    --card: #ffffff;
+    --text: #1a1f29;
+    --muted: #5d6676;
+    --border: #d3d9e2;
+    --ok: #2e7d32;
+    --ok-bg: #e7f4e8;
+    --bad: #c62828;
+    --bad-bg: #fdeaea;
+    --miss: #ef6c00;
+    --miss-bg: #fff1e2;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px; }
+
+  header.app {
+    background: var(--primary);
+    color: #fff;
+    padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
+  }
+  header.app h1 { margin: 0; font-size: 24px; letter-spacing: .3px; }
+  header.app.brand { display: flex; align-items: center; gap: 14px; }
+  header.app.brand img { width: 64px; height: 64px; flex: none; border-radius: 50%; }
+  header.app.brand > div { flex: 1; min-width: 0; }
+  header.app p { margin: 2px 0 0; opacity: .8; font-size: 15px; }
+
+  .sticky-head {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--primary); color: #fff;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  }
+  .sticky-head .row { display: flex; align-items: center; gap: 12px; max-width: 640px; margin: 0 auto; }
+  .sticky-head .info { flex: 1; min-width: 0; }
+  .sticky-head .t1 { font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sticky-head .t2 { font-size: 14px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .counter {
+    background: #fff; color: var(--primary);
+    border-radius: 12px; padding: 4px 12px; text-align: center; min-width: 64px;
+  }
+  .counter b { display: block; font-size: 22px; line-height: 1.1; }
+  .counter span { font-size: 12px; font-weight: 600; }
+
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .card h2 { margin: 0 0 12px; font-size: 19px; }
+
+  label.field { display: block; margin-bottom: 14px; }
+  label.field > span { display: block; font-weight: 600; margin-bottom: 6px; font-size: 15px; }
+  label.field > span em { font-style: normal; color: var(--bad); }
+  input[type=text], input[type=date], textarea {
+    width: 100%; font: inherit; font-size: 18px;
+    padding: 14px; border: 2px solid var(--border); border-radius: 12px;
+    background: #fff; color: var(--text);
+    -webkit-appearance: none; appearance: none;
+  }
+  input[type=date] { min-height: 56px; }
+  textarea { min-height: 110px; resize: vertical; }
+  input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+  .invalid { border-color: var(--bad) !important; background: #fff7f7 !important; }
+
+  .prow { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .prow input { flex: 1; min-width: 0; }
+  .prow .del { width: 56px; height: 56px; }
+  .btn.add { min-height: 52px; font-size: 17px; margin: 0; border-style: dashed; }
+
+  .modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 16px; }
+  .modes a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 64px;
+    border-radius: 14px; border: 2px solid var(--primary); color: var(--primary);
+    background: #fff; font-weight: 700; font-size: 13px; text-decoration: none; line-height: 1.15; text-align: center; padding: 4px 2px;
+  }
+  .modes a .em { font-size: 22px; }
+  .modes a.sel { background: var(--primary); color: #fff; }
+
+  .hint {
+    display: none; margin-top: 8px; padding: 10px 12px;
+    background: #e8f0fb; color: var(--primary); border-radius: 10px; font-size: 15px;
+  }
+  .hint.show { display: block; }
+
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; min-height: 60px; padding: 14px 18px;
+    font: inherit; font-size: 19px; font-weight: 700;
+    border: none; border-radius: 14px; cursor: pointer;
+    background: var(--primary); color: #fff;
+    margin-bottom: 12px; text-decoration: none;
+    touch-action: manipulation; user-select: none;
+  }
+  .btn:active { transform: scale(.985); filter: brightness(.92); }
+  .btn:disabled { opacity: .45; }
+  .btn.secondary { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .btn.ghost { background: transparent; color: var(--muted); border: 2px solid var(--border); font-weight: 600; font-size: 17px; min-height: 54px; }
+  .btn.success { background: var(--ok); }
+  .btn.big { min-height: 68px; font-size: 20px; }
+
+  /* Fotos */
+  .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }
+  .slot {
+    position: relative; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    min-height: 170px; border: 3px dashed #9fb0c7; border-radius: 14px;
+    background: #f6f8fb; cursor: pointer; overflow: hidden; color: var(--primary);
+  }
+  .slot input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .slot .ico { font-size: 40px; line-height: 1; }
+  .slot .lbl { font-weight: 700; margin-top: 6px; font-size: 16px; }
+  .slot .sub { font-size: 13px; color: var(--muted); }
+  .slot.has { align-items: stretch; border-style: solid; border-color: var(--ok); background: #000; padding: 0; justify-content: flex-start; }
+  .slot.has img { width: 100%; height: 150px; object-fit: cover; display: block; }
+  .slot.has .meta { width: 100%; background: #fff; color: var(--text); font-size: 12px; line-height: 1.3; padding: 6px; text-align: left; }
+  .slot.has .meta b { color: var(--ok); }
+  .slot .retake { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.6); color: #fff; border-radius: 8px; padding: 2px 8px; font-size: 12px; }
+  .slot.busy::after {
+    content: "Wird verarbeitet…"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.85); color: var(--primary); font-weight: 700;
+  }
+  .slot.invalid { border-color: var(--bad); background: #fff3f3; }
+  .slot.detail { min-height: 120px; }
+
+  /* Status */
+  .status-btns { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .sbtn {
+    min-height: 62px; font: inherit; font-size: 19px; font-weight: 700;
+    border-radius: 14px; border: 3px solid; background: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    touch-action: manipulation;
+  }
+  .sbtn[data-status=ok] { color: var(--ok); border-color: var(--ok); }
+  .sbtn[data-status=mangel] { color: var(--bad); border-color: var(--bad); }
+  .sbtn[data-status=fehlend] { color: var(--miss); border-color: var(--miss); }
+  .sbtn.sel { color: #fff; }
+  .sbtn.sel[data-status=ok] { background: var(--ok); }
+  .sbtn.sel[data-status=mangel] { background: var(--bad); }
+  .sbtn.sel[data-status=fehlend] { background: var(--miss); }
+  .status-btns.invalid { outline: 3px solid var(--bad); outline-offset: 4px; border-radius: 14px; background: none !important; }
+
+  .note-box { display: none; margin-top: 16px; }
+  .note-box.show { display: block; }
+  .note-wrap { position: relative; }
+  .note-wrap textarea { padding-right: 76px; }
+  .mic {
+    position: absolute; right: 8px; top: 8px; width: 58px; height: 58px;
+    border-radius: 50%; border: none; background: var(--primary); color: #fff;
+    font-size: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .mic.rec { background: var(--bad); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(198,40,40,.6); } 50% { box-shadow: 0 0 0 12px rgba(198,40,40,0); } }
+  .mic-state { font-size: 14px; color: var(--bad); margin-top: 6px; min-height: 1em; }
+
+  .errors {
+    display: none; background: var(--bad-bg); color: var(--bad);
+    border: 2px solid var(--bad); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-weight: 600;
+  }
+  .errors.show { display: block; }
+  .errors ul { margin: 4px 0 0; padding-left: 20px; }
+
+  /* Türliste */
+  .door-list { list-style: none; margin: 0; padding: 0; }
+  .door-list li {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid #edf0f4;
+  }
+  .door-list li:last-child { border-bottom: none; }
+  .door-list img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; flex: none; background: #ddd; }
+  .door-list .dn { flex: 1; min-width: 0; }
+  .door-list .dn b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .door-list .dn small { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .del {
+    flex: none; width: 50px; height: 50px; border-radius: 12px;
+    border: 2px solid var(--border); background: #fff; color: var(--bad); font-size: 22px; cursor: pointer;
+  }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 13px; font-weight: 700; color: #fff; margin-top: 2px;
+  }
+  .badge.ok { background: var(--ok); }
+  .badge.mangel { background: var(--bad); }
+  .badge.fehlend { background: var(--miss); }
+  .empty { color: var(--muted); text-align: center; padding: 8px 0; }
+
+  /* Unterschrift */
+  .sig-wrap {
+    position: relative; border: 2px solid var(--border); border-radius: 14px;
+    background: #fff; overflow: hidden;
+  }
+  #sigCanvas { display: block; width: 100%; height: 240px; touch-action: none; cursor: crosshair; }
+  .sig-line {
+    position: absolute; left: 20px; right: 20px; bottom: 50px;
+    border-bottom: 2px dashed #b8c2cf; pointer-events: none;
+  }
+  .sig-x { position: absolute; left: 22px; bottom: 54px; font-size: 22px; color: #b8c2cf; pointer-events: none; }
+  .sig-ph {
+    position: absolute; left: 0; right: 0; bottom: 18px; text-align: center;
+    color: #9aa5b4; font-size: 14px; pointer-events: none;
+  }
+  .row2 { display: flex; gap: 10px; }
+  .row2 .btn { flex: 1; }
+
+  .summary-list { margin: 0; padding-left: 20px; }
+  .summary-list li { margin-bottom: 4px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 16px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; font-weight: 600; word-break: break-word; }
+
+  .done-icon {
+    width: 84px; height: 84px; border-radius: 50%; background: var(--ok); color: #fff;
+    font-size: 48px; display: flex; align-items: center; justify-content: center; margin: 8px auto 12px;
+  }
+  .center { text-align: center; }
+  .muted { color: var(--muted); }
+  .pending-sig { background: var(--miss-bg); color: #8a3e00; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-weight: 600; }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 100; background: rgba(20,30,45,.6);
+    display: none; align-items: center; justify-content: center; color: #fff; flex-direction: column; gap: 16px;
+    font-size: 19px; font-weight: 700;
+  }
+  .overlay.show { display: flex; }
+  .spinner { width: 54px; height: 54px; border: 6px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(150%);
+    background: #1a1f29; color: #fff; padding: 14px 20px; border-radius: 12px; font-weight: 600;
+    z-index: 110; transition: transform .25s ease, opacity .25s ease; max-width: calc(100% - 32px); text-align: center;
+    opacity: 0; pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .gps-state { font-size: 13px; color: var(--muted); margin-top: -4px; margin-bottom: 12px; }
+
+  .proto-list { list-style: none; margin: 0; padding: 0; }
+  .proto-list li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #edf0f4; }
+  .proto-list li:last-child { border-bottom: none; }
+  .proto-open {
+    flex: 1; min-width: 0; text-align: left; background: #f6f8fb; border: 2px solid var(--border); border-radius: 12px;
+    padding: 10px 12px; font: inherit; color: var(--text); cursor: pointer;
+  }
+  .proto-open b { display: block; font-size: 17px; }
+  .proto-open small { display: block; color: var(--muted); margin: 2px 0 4px; }
+  .badge.pdf { background: var(--primary); }
+  .entry .e-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .e-name { flex: 1; min-width: 0; text-align: left; background: none; border: none; padding: 0; font: inherit; font-size: 19px; font-weight: 700; color: var(--text); cursor: pointer; }
+  .e-name .pen { color: var(--muted); font-size: 15px; font-weight: 400; }
+  .e-note { margin-top: 10px; min-height: 70px; font-size: 16px; }
+  .progress { margin: 4px 0 12px; font-size: 15px; color: var(--muted); }
+  .progress .bar { height: 10px; background: #dde3ea; border-radius: 6px; margin-top: 6px; overflow: hidden; }
+  .progress .bar i { display: block; height: 100%; background: var(--ok); }
+  .card.empty { color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- ============ 1. ÜBERSICHT / START ============ -->
+<section class="screen active" id="screen-start">
+  <header class="app brand">
+    <div>
+      <h1>Vorher / Nachher</h1>
+      <p>Fotoprotokoll Baustelle</p>
+    </div>
+    <img src="logo.png" alt="Jonas Stolzenburg Baukonzept" onerror="this.remove()">
+  </header>
+  <div class="wrap">
+    <nav class="modes"><a href="./"><span class="em">🚪</span>Türen</a><a href="fenster.html"><span class="em">🪟</span>Fenster</a><a href="arbeiten.html"><span class="em">🔨</span>Arbeiten</a><a class="sel" aria-current="page"><span class="em">📷</span>Vorher/<wbr>Nachher</a></nav>
+
+    <div class="card" id="open-card">
+      <h2>Gespeicherte Protokolle</h2>
+      <p class="muted" style="margin:-6px 0 10px;font-size:14px">Antippen, um Nachher-Fotos zu ergänzen oder das PDF zu erstellen.</p>
+      <ul class="proto-list" id="proto-list"></ul>
+    </div>
+
+    <div class="card">
+      <h2>Neues Protokoll</h2>
+      <label class="field">
+        <span>Datum</span>
+        <input type="date" id="f-datum">
+      </label>
+      <label class="field">
+        <span>Baustelle <em>*</em></span>
+        <input type="text" id="f-baustelle" list="baustellen-list" autocomplete="off" placeholder="z. B. Neubau Lindenstraße 12">
+        <datalist id="baustellen-list"></datalist>
+        <div class="hint" id="baustelle-hint"></div>
+      </label>
+      <div class="gps-state" id="gps-state">📍 GPS wird ermittelt…</div>
+      <label class="field">
+        <span>Bereich <em>*</em></span>
+        <input type="text" id="f-bereich" autocomplete="off" placeholder="z. B. Wohnung 3, Treppenhaus, Fassade">
+      </label>
+      <div class="field" style="margin-bottom:16px">
+        <span style="display:block;font-weight:600;margin-bottom:6px;font-size:15px">Name des Prüfers <em style="font-style:normal;color:var(--bad)">*</em></span>
+        <div id="pruefer-list">
+          <div class="prow"><input type="text" id="f-pruefer" list="pruefer-names" autocomplete="off" placeholder="Ihr Name"></div>
+        </div>
+        <datalist id="pruefer-names"></datalist>
+        <button class="btn secondary add" id="btn-add-pruefer" type="button">+ Weiteren Prüfer hinzufügen</button>
+      </div>
+      <div class="errors" id="start-errors"></div>
+      <button class="btn big" id="btn-start" type="button">Protokoll starten ▶</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. PROTOKOLL ============ -->
+<section class="screen" id="screen-proto">
+  <div class="sticky-head">
+    <div class="row">
+      <div class="info">
+        <div class="t1" id="h-baustelle"></div>
+        <div class="t2" id="h-sub"></div>
+      </div>
+      <div class="counter"><b id="h-count">0</b><span>Positionen</span></div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <h2>Neue Position</h2>
+      <label class="field" style="margin-bottom:10px">
+        <span>Bezeichnung <em>*</em></span>
+        <input type="text" id="e-name" autocomplete="off" placeholder="z. B. Wand Flur, Fassade Nordseite" enterkeyhint="done">
+      </label>
+      <button class="btn success" id="btn-add-entry" type="button" style="margin-bottom:0">+ Position hinzufügen</button>
+    </div>
+
+    <div id="entries"></div>
+
+    <div class="progress" id="progress"></div>
+    <button class="btn big success" id="btn-pdf" type="button">📄 Protokoll erstellen (PDF)</button>
+    <button class="btn ghost" id="btn-overview" type="button">◀ Zur Übersicht</button>
+    <p class="muted center" style="font-size:13px;margin:4px 0 0">Alles wird automatisch auf diesem Gerät gespeichert.</p>
+  </div>
+</section>
+
+<!-- ============ 3. FERTIG ============ -->
+<section class="screen" id="screen-done">
+  <header class="app">
+    <h1>Protokoll erstellt</h1>
+    <p id="done-sub"></p>
+  </header>
+  <div class="wrap">
+    <div class="card center">
+      <div class="done-icon">✓</div>
+      <div id="done-info"></div>
+    </div>
+    <button class="btn big success" id="btn-share" type="button">📤 Protokoll teilen</button>
+    <button class="btn secondary" id="btn-download" type="button">⬇ PDF herunterladen</button>
+    <div style="height:12px"></div>
+    <button class="btn" id="btn-continue" type="button">✎ Weiter bearbeiten</button>
+    <button class="btn ghost" id="btn-done-overview" type="button">Zur Übersicht</button>
+  </div>
+</section>
+
+<div class="overlay" id="overlay"><div class="spinner"></div><div id="overlay-text">Bitte warten…</div></div>
+<div class="toast" id="toast"></div>
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Hilfsfunktionen ---------- */
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+  const KEY_SITES = 'abnahme.baustellen';
+  const KEY_PRUEFER = 'abnahme.pruefer';
+  const KEY_PRUEFER_EXTRA = 'abnahme.pruefer.weitere';
+  const KEY_PRUEFER_NAMES = 'abnahme.pruefer.namen';
+
+  const store = {
+    get(key, fallback) {
+      try {
+        const v = localStorage.getItem(key);
+        return v == null ? fallback : JSON.parse(v);
+      } catch (e) { return fallback; }
+    },
+    set(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+      catch (e) { return false; }
+    }
+  };
+
+  const STATUS = {
+    ok:      { label: 'In Ordnung',     rgb: [46, 125, 50] },
+    mangel:  { label: 'Mangel',         rgb: [198, 40, 40] },
+    fehlend: { label: 'Fehlende Teile', rgb: [239, 108, 0] }
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function todayIso() {
+    const d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function isoToDe(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+    return m ? m[3] + '.' + m[2] + '.' + m[1] : (iso || '');
+  }
+  function fmtDateTime(iso) {
+    const d = new Date(iso);
+    return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear() + ', ' +
+      pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + ' Uhr';
+  }
+  function fmtGps(g) {
+    if (!g) return 'GPS: nicht verfügbar';
+    return 'GPS: ' + g.lat.toFixed(6) + ', ' + g.lon.toFixed(6) + ' (±' + Math.round(g.acc) + ' m)';
+  }
+  function distanceM(a, b) {
+    const R = 6371000, rad = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * rad, dLon = (b.lon - a.lon) * rad;
+    const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(x));
+  }
+
+  let toastTimer = null;
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+  function overlay(show, text) {
+    $('#overlay-text').textContent = text || 'Bitte warten…';
+    $('#overlay').classList.toggle('show', !!show);
+  }
+  function showScreen(id) {
+    $$('.screen').forEach((s) => s.classList.toggle('active', s.id === id));
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------- GPS ---------- */
+  const geo = {
+    last: null,
+    watchId: null,
+    listeners: [],
+    start() {
+      if (!('geolocation' in navigator) || this.watchId != null) {
+        if (!('geolocation' in navigator)) setGpsState('📍 GPS wird von diesem Gerät nicht unterstützt');
+        return;
+      }
+      try {
+        this.watchId = navigator.geolocation.watchPosition(
+          (p) => this._set(p),
+          (err) => {
+            if (err && err.code === 1) setGpsState('📍 GPS-Zugriff verweigert – Fotos werden ohne Standort gespeichert');
+            else if (!this.last) setGpsState('📍 GPS-Position noch nicht verfügbar');
+          },
+          { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 }
+        );
+      } catch (e) { /* ignore */ }
+    },
+    _set(p) {
+      this.last = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, ts: Date.now() };
+      this.listeners.forEach((fn) => { try { fn(this.last); } catch (e) {} });
+    },
+    copy() { return this.last ? { lat: this.last.lat, lon: this.last.lon, acc: this.last.acc } : null; },
+    // Liefert eine möglichst aktuelle Position (oder null)
+    get(maxAgeMs) {
+      maxAgeMs = maxAgeMs || 30000;
+      return new Promise((resolve) => {
+        if (this.last && Date.now() - this.last.ts < maxAgeMs) return resolve(this.copy());
+        if (!('geolocation' in navigator)) return resolve(null);
+        try {
+          navigator.geolocation.getCurrentPosition(
+            (p) => { this._set(p); resolve(this.copy()); },
+            () => resolve(this.copy()),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
+          );
+        } catch (e) { resolve(this.copy()); }
+      });
+    }
+  };
+  function setGpsState(text) { $('#gps-state').textContent = text; }
+
+  /* ---------- Baustellen (localStorage) ---------- */
+  function loadSites() {
+    const list = store.get(KEY_SITES, []);
+    return Array.isArray(list) ? list.filter((s) => s && typeof s.name === 'string' && s.name.trim()) : [];
+  }
+  function renderSiteList() {
+    const sites = loadSites().sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+    $('#baustellen-list').innerHTML = sites.map((s) => '<option value="' + esc(s.name) + '"></option>').join('');
+  }
+  function rememberSite(name, pos) {
+    const sites = loadSites();
+    const key = name.trim().toLowerCase();
+    let site = sites.find((s) => s.name.trim().toLowerCase() === key);
+    if (!site) {
+      site = { name: name.trim() };
+      sites.push(site);
+    }
+    site.lastUsed = Date.now();
+    // Position übernehmen, wenn noch keine vorhanden oder die neue genauer ist
+    if (pos && (site.lat == null || pos.acc < (site.acc || Infinity))) {
+      site.lat = pos.lat; site.lon = pos.lon; site.acc = pos.acc;
+    }
+    store.set(KEY_SITES, sites);
+    renderSiteList();
+  }
+
+  let suggestionDone = false;
+  let userTypedSite = false;
+  function trySuggestNearest(pos) {
+    if (!$('#screen-start').classList.contains('active')) return;
+    setGpsState('📍 GPS aktiv (±' + Math.round(pos.acc) + ' m)');
+    if (suggestionDone) return;
+    const sites = loadSites().filter((s) => typeof s.lat === 'number' && typeof s.lon === 'number');
+    if (!sites.length) { suggestionDone = true; return; }
+    let best = null, bestD = Infinity;
+    sites.forEach((s) => {
+      const d = distanceM(pos, s);
+      if (d < bestD) { bestD = d; best = s; }
+    });
+    suggestionDone = true;
+    if (best && bestD <= 500) {
+      const input = $('#f-baustelle');
+      const hint = $('#baustelle-hint');
+      if (!input.value.trim() && !userTypedSite) {
+        input.value = best.name;
+        hint.innerHTML = '📍 Nächstgelegene Baustelle automatisch vorgeschlagen: <b>' + esc(best.name) + '</b> (ca. ' + Math.round(bestD) + ' m entfernt)';
+      } else if (input.value.trim().toLowerCase() !== best.name.trim().toLowerCase()) {
+        hint.innerHTML = '📍 In der Nähe (ca. ' + Math.round(bestD) + ' m): <b>' + esc(best.name) + '</b> – <u>übernehmen</u>';
+        hint.onclick = () => { input.value = best.name; hint.classList.remove('show'); };
+      } else return;
+      hint.classList.add('show');
+    }
+  }
+  geo.listeners.push(trySuggestNearest);
+
+  /* ---------- Prüfer (mehrere) ---------- */
+  function addPrueferRow(value) {
+    const row = document.createElement('div');
+    row.className = 'prow';
+    row.innerHTML = '<input type="text" class="p-extra" list="pruefer-names" autocomplete="off" placeholder="Weiterer Prüfer">' +
+      '<button class="del" type="button" aria-label="Prüfer entfernen">✕</button>';
+    const input = row.querySelector('input');
+    input.value = value || '';
+    row.querySelector('.del').addEventListener('click', () => row.remove());
+    $('#pruefer-list').appendChild(row);
+    return input;
+  }
+  function setPruefer(main, extras) {
+    $$('#pruefer-list .p-extra').forEach((el) => el.parentNode.remove());
+    $('#f-pruefer').value = main || '';
+    (extras || []).forEach((n) => addPrueferRow(n));
+  }
+  function getPruefer() {
+    const names = [$('#f-pruefer').value].concat($$('#pruefer-list .p-extra').map((el) => el.value))
+      .map((n) => n.trim()).filter(Boolean);
+    return names.filter((n, i) => names.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === i);
+  }
+  function renderPrueferNames() {
+    const names = store.get(KEY_PRUEFER_NAMES, []);
+    $('#pruefer-names').innerHTML = (Array.isArray(names) ? names : [])
+      .map((n) => '<option value="' + esc(n) + '"></option>').join('');
+  }
+  function rememberPruefer(list) {
+    store.set(KEY_PRUEFER, list[0] || '');
+    store.set(KEY_PRUEFER_EXTRA, list.slice(1));
+    let names = store.get(KEY_PRUEFER_NAMES, []);
+    if (!Array.isArray(names)) names = [];
+    list.slice().reverse().forEach((n) => {
+      names = names.filter((x) => typeof x === 'string' && x.toLowerCase() !== n.toLowerCase());
+      names.unshift(n);
+    });
+    store.set(KEY_PRUEFER_NAMES, names.slice(0, 30));
+    renderPrueferNames();
+  }
+  $('#btn-add-pruefer').addEventListener('click', () => addPrueferRow('').focus());
+
+  /* ---------- Fotos ---------- */
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => resolve({ img, url });
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Bild konnte nicht gelesen werden')); };
+      img.src = url;
+    });
+  }
+
+  async function processPhoto(file) {
+    const takenAt = new Date().toISOString();
+    const gpsPromise = geo.get(30000);
+    const { img, url } = await loadImage(file);
+    try {
+      const w0 = img.naturalWidth, h0 = img.naturalHeight;
+      const scale = Math.min(1, 1280 / Math.max(w0, h0));
+      const w = Math.max(1, Math.round(w0 * scale)), h = Math.max(1, Math.round(h0 * scale));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      const data = c.toDataURL('image/jpeg', 0.7);
+      const gps = await gpsPromise;
+      return { data, w, h, time: takenAt, gps };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  /* ---------- Logo (logo.png im selben Ordner) ---------- */
+  let logoData = null;
+  try {
+    fetch('logo.png', { cache: 'no-cache' })
+      .then((res) => (res.ok ? res.blob() : null))
+      .then((blob) => {
+        if (!blob) return;
+        const fr = new FileReader();
+        fr.onload = () => { logoData = fr.result; };
+        fr.readAsDataURL(blob);
+      })
+      .catch(() => {});
+  } catch (e) { /* ohne Logo weiter */ }
+
+  /* ---------- PDF ---------- */
+  // Standard-PDF-Schriften kennen nur Latin-1 – problematische Zeichen ersetzen
+  function pdfText(s) {
+    return String(s == null ? '' : s)
+      .replace(/[‘’‚′]/g, "'")
+      .replace(/[“”„″]/g, '"')
+      .replace(/[–—−]/g, '-')
+      .replace(/…/g, '...')
+      .replace(/€/g, 'EUR')
+      .replace(/[   ]/g, ' ')
+      .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, '');
+  }
+
+  /* ---------- Speicher auf dem Gerät (IndexedDB) ---------- */
+  const DB_NAME = 'abnahme-vorher-nachher', DB_STORE = 'protokolle';
+  const memDb = new Map();
+  let dbPromise = null;
+  let dbOk = true;
+  let pendingSaves = 0;
+  let busyPhotos = 0;
+
+  function openDb() {
+    if (!dbPromise) {
+      dbPromise = new Promise((resolve, reject) => {
+        try {
+          const rq = indexedDB.open(DB_NAME, 1);
+          rq.onupgradeneeded = () => rq.result.createObjectStore(DB_STORE, { keyPath: 'id' });
+          rq.onsuccess = () => resolve(rq.result);
+          rq.onerror = () => reject(rq.error);
+        } catch (e) { reject(e); }
+      });
+    }
+    return dbPromise;
+  }
+  function dbTx(mode, fn) {
+    return openDb().then((db) => new Promise((resolve, reject) => {
+      const t = db.transaction(DB_STORE, mode);
+      const req = fn(t.objectStore(DB_STORE));
+      t.oncomplete = () => resolve(req ? req.result : undefined);
+      t.onerror = () => reject(t.error);
+      t.onabort = () => reject(t.error);
+    }));
+  }
+  function storageFailed() {
+    if (dbOk) alert('Achtung: Das Protokoll kann auf diesem Gerät nicht dauerhaft gespeichert werden ' +
+      '(z. B. privater Modus oder Speicher voll). Bitte das PDF erstellen, bevor die Seite geschlossen wird.');
+    dbOk = false;
+  }
+  const repo = {
+    async all() {
+      try { return (await dbTx('readonly', (st) => st.getAll())) || []; }
+      catch (e) { storageFailed(); return Array.from(memDb.values()); }
+    },
+    async put(p) {
+      p.updated = Date.now();
+      memDb.set(p.id, p);
+      pendingSaves++;
+      try { await dbTx('readwrite', (st) => st.put(p)); }
+      catch (e) { storageFailed(); }
+      finally { pendingSaves--; }
+    },
+    async del(id) {
+      memDb.delete(id);
+      try { await dbTx('readwrite', (st) => st.delete(id)); } catch (e) { /* ignorieren */ }
+    }
+  };
+  // Browser bitten, die Daten nicht automatisch zu löschen
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+  /* ---------- Zustand ---------- */
+  let proto = null;       // aktuelles Protokoll
+  let pdf = null;         // { blob, name }
+
+  function fmtShort(ts) {
+    const d = new Date(ts);
+    return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '. ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function stats(p) {
+    const n = p.entries.length;
+    return {
+      n,
+      vorher: p.entries.filter((e) => e.vorher).length,
+      nachher: p.entries.filter((e) => e.nachher).length
+    };
+  }
+
+  /* ---------- Übersicht ---------- */
+  async function renderProtoList() {
+    const list = (await repo.all()).sort((a, b) => (b.updated || 0) - (a.updated || 0));
+    const ul = $('#proto-list');
+    if (!list.length) {
+      ul.innerHTML = '<li class="empty">Noch keine Protokolle gespeichert.</li>';
+      return;
+    }
+    ul.innerHTML = list.map((p) => {
+      const s = stats(p);
+      const done = s.n > 0 && s.nachher === s.n;
+      return '<li>' +
+        '<button class="proto-open" type="button" data-id="' + esc(p.id) + '">' +
+          '<b>' + esc(p.meta.baustelle) + ' · ' + esc(p.meta.bereich) + '</b>' +
+          '<small>' + s.n + ' ' + (s.n === 1 ? 'Position' : 'Positionen') + ' · ' + s.nachher + ' mit Nachher-Foto · Stand ' + fmtShort(p.updated) + '</small>' +
+          '<span class="badge ' + (done ? 'ok' : 'fehlend') + '">' + (done ? 'Vollständig' : 'Nachher-Fotos offen') + '</span>' +
+          (p.lastPdf ? ' <span class="badge pdf">PDF ' + fmtShort(p.lastPdf) + '</span>' : '') +
+        '</button>' +
+        '<button class="del" type="button" data-del="' + esc(p.id) + '" aria-label="Protokoll löschen">🗑</button>' +
+      '</li>';
+    }).join('');
+  }
+
+  $('#proto-list').addEventListener('click', async (e) => {
+    const del = e.target.closest('[data-del]');
+    if (del) {
+      const all = await repo.all();
+      const p = all.find((x) => x.id === del.dataset.del);
+      if (!p) return;
+      if (!confirm('Protokoll „' + p.meta.baustelle + ' · ' + p.meta.bereich + '“ mit allen Fotos endgültig löschen?')) return;
+      await repo.del(p.id);
+      renderProtoList();
+      toast('Protokoll gelöscht');
+      return;
+    }
+    const open = e.target.closest('.proto-open');
+    if (open) {
+      const all = await repo.all();
+      const p = all.find((x) => x.id === open.dataset.id);
+      if (p) openProto(p);
+    }
+  });
+
+  function initStart() {
+    $('#f-datum').value = todayIso();
+    $('#f-baustelle').value = '';
+    $('#f-bereich').value = '';
+    const extras = store.get(KEY_PRUEFER_EXTRA, []);
+    setPruefer(store.get(KEY_PRUEFER, '') || '', Array.isArray(extras) ? extras.filter((n) => typeof n === 'string' && n.trim()) : []);
+    renderPrueferNames();
+    $('#baustelle-hint').classList.remove('show');
+    $('#start-errors').classList.remove('show');
+    $$('#screen-start .invalid').forEach((el) => el.classList.remove('invalid'));
+    renderSiteList();
+    userTypedSite = false;
+    suggestionDone = false;
+    $('#proto-list').innerHTML = '<li class="empty">Lädt…</li>';
+    renderProtoList();
+  }
+  $('#f-baustelle').addEventListener('input', () => { userTypedSite = true; });
+
+  $('#btn-start').addEventListener('click', async () => {
+    const f = { datum: $('#f-datum'), baustelle: $('#f-baustelle'), bereich: $('#f-bereich'), pruefer: $('#f-pruefer') };
+    Object.values(f).forEach((el) => el.classList.remove('invalid'));
+    const errs = [];
+    const prueferList = getPruefer();
+    if (!f.datum.value) { errs.push('Datum fehlt'); f.datum.classList.add('invalid'); }
+    if (!f.baustelle.value.trim()) { errs.push('Baustelle angeben'); f.baustelle.classList.add('invalid'); }
+    if (!f.bereich.value.trim()) { errs.push('Bereich angeben'); f.bereich.classList.add('invalid'); }
+    if (!prueferList.length) { errs.push('Name des Prüfers angeben'); f.pruefer.classList.add('invalid'); }
+    const box = $('#start-errors');
+    if (errs.length) {
+      box.innerHTML = 'Bitte ergänzen:<ul>' + errs.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+      box.classList.add('show');
+      return;
+    }
+    box.classList.remove('show');
+    const meta = {
+      datum: f.datum.value,
+      baustelle: f.baustelle.value.trim(),
+      bereich: f.bereich.value.trim(),
+      pruefer: prueferList.join(', ')
+    };
+    rememberPruefer(prueferList);
+    const pos = geo.last && Date.now() - geo.last.ts < 5 * 60000 ? geo.copy() : null;
+    rememberSite(meta.baustelle, pos);
+    if (!pos) geo.get(60000).then((p) => { if (p) rememberSite(meta.baustelle, p); });
+
+    const p = { id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), created: Date.now(), meta, entries: [] };
+    await repo.put(p);
+    openProto(p);
+  });
+
+  /* ---------- Protokoll ---------- */
+  function openProto(p) {
+    proto = p;
+    pdf = null;
+    renderHead();
+    renderEntries();
+    $('#e-name').value = '';
+    showScreen('screen-proto');
+  }
+  function renderHead() {
+    $('#h-baustelle').textContent = proto.meta.baustelle;
+    $('#h-sub').textContent = proto.meta.bereich + ' · ' + isoToDe(proto.meta.datum);
+    $('#h-count').textContent = proto.entries.length;
+    const s = stats(proto);
+    $('#progress').innerHTML = s.n
+      ? '<b>' + s.nachher + ' von ' + s.n + '</b> Positionen mit Nachher-Foto' +
+        '<div class="bar"><i style="width:' + Math.round(100 * s.nachher / s.n) + '%"></i></div>'
+      : '';
+  }
+  function slotInner(photo, label) {
+    if (photo) {
+      return '<img alt="' + esc(label) + '" src="' + photo.data + '">' +
+        '<span class="retake">Neu</span>' +
+        '<div class="meta"><b>✔ ' + esc(label) + '</b><br>' + esc(fmtDateTime(photo.time).replace(', ', ' ')) +
+        '<br>' + esc(photo.gps ? '±' + Math.round(photo.gps.acc) + ' m GPS' : 'ohne GPS') + '</div>';
+    }
+    return '<div class="ico">📷</div><div class="lbl">' + esc(label) + '</div><div class="sub">antippen zum Fotografieren</div>';
+  }
+  function slotHtml(e, key, label) {
+    return '<label class="slot' + (e[key] ? ' has' : '') + '" data-id="' + esc(e.id) + '" data-key="' + key + '" data-label="' + label + '">' +
+      '<input type="file" accept="image/*" capture="environment">' +
+      '<div class="slot-body">' + slotInner(e[key], label) + '</div></label>';
+  }
+  function renderEntries() {
+    const box = $('#entries');
+    if (!proto.entries.length) {
+      box.innerHTML = '<div class="card empty">Noch keine Position. Oben eine Bezeichnung eingeben und „+ Position hinzufügen“ tippen.</div>';
+      return;
+    }
+    // Neueste oben
+    box.innerHTML = proto.entries.map((e, i) => ({ e, i })).reverse().map(({ e, i }) =>
+      '<div class="card entry" data-id="' + esc(e.id) + '">' +
+        '<div class="e-head">' +
+          '<button type="button" class="e-name" data-rename="' + esc(e.id) + '">' + (i + 1) + '. ' + esc(e.name) + ' <span class="pen">✎</span></button>' +
+          '<button class="del" type="button" data-remove="' + esc(e.id) + '" aria-label="Position löschen">🗑</button>' +
+        '</div>' +
+        '<div class="photos">' + slotHtml(e, 'vorher', 'Vorher') + slotHtml(e, 'nachher', 'Nachher') + '</div>' +
+        '<textarea class="e-note" data-note="' + esc(e.id) + '" placeholder="Notiz (optional)">' + esc(e.note || '') + '</textarea>' +
+      '</div>'
+    ).join('');
+  }
+  function findEntry(id) { return proto.entries.find((e) => e.id === id); }
+
+  function addEntry() {
+    const input = $('#e-name');
+    const name = input.value.trim();
+    if (!name) {
+      input.classList.add('invalid');
+      input.focus();
+      toast('Bitte eine Bezeichnung eingeben');
+      return;
+    }
+    input.classList.remove('invalid');
+    proto.entries.push({ id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, note: '', vorher: null, nachher: null });
+    input.value = '';
+    input.blur();
+    repo.put(proto);
+    renderHead();
+    renderEntries();
+    toast('✔ Position „' + name + '“ angelegt – jetzt Vorher-Foto aufnehmen');
+  }
+  $('#btn-add-entry').addEventListener('click', addEntry);
+  $('#e-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addEntry(); } });
+  $('#e-name').addEventListener('input', (e) => e.target.classList.remove('invalid'));
+
+  $('#entries').addEventListener('click', (ev) => {
+    const rm = ev.target.closest('[data-remove]');
+    if (rm) {
+      const e = findEntry(rm.dataset.remove);
+      if (!e || !confirm('Position „' + e.name + '“ mit ihren Fotos löschen?')) return;
+      proto.entries = proto.entries.filter((x) => x !== e);
+      repo.put(proto);
+      renderHead();
+      renderEntries();
+      toast('Position gelöscht');
+      return;
+    }
+    const rn = ev.target.closest('[data-rename]');
+    if (rn) {
+      const e = findEntry(rn.dataset.rename);
+      if (!e) return;
+      const name = prompt('Bezeichnung der Position:', e.name);
+      if (name && name.trim()) {
+        e.name = name.trim();
+        repo.put(proto);
+        renderEntries();
+      }
+    }
+  });
+
+  let noteTimer = null;
+  $('#entries').addEventListener('input', (ev) => {
+    const ta = ev.target.closest('[data-note]');
+    if (!ta) return;
+    const e = findEntry(ta.dataset.note);
+    if (!e) return;
+    e.note = ta.value;
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => repo.put(proto), 600);
+  });
+
+  $('#entries').addEventListener('change', async (ev) => {
+    const input = ev.target;
+    if (!input.matches('input[type=file]')) return;
+    const slot = input.closest('.slot');
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file || !slot) return;
+    const p = proto;
+    const e = findEntry(slot.dataset.id);
+    if (!e) return;
+    slot.classList.add('busy');
+    busyPhotos++;
+    try {
+      const photo = await processPhoto(file);
+      e[slot.dataset.key] = photo;
+      await repo.put(p);
+      if (proto === p) {
+        // nur dieses Feld neu zeichnen (andere Eingaben bleiben erhalten)
+        const cur = document.querySelector('.slot[data-id="' + e.id + '"][data-key="' + slot.dataset.key + '"]');
+        if (cur) { cur.classList.add('has'); cur.querySelector('.slot-body').innerHTML = slotInner(photo, slot.dataset.label); }
+        renderHead();
+      }
+    } catch (err) {
+      alert('Das Foto konnte nicht verarbeitet werden. Bitte erneut versuchen.');
+    } finally {
+      busyPhotos--;
+      slot.classList.remove('busy');
+    }
+  });
+
+  $('#btn-overview').addEventListener('click', async () => {
+    clearTimeout(noteTimer);
+    await repo.put(proto);
+    proto = null;
+    initStart();
+    showScreen('screen-start');
+  });
+
+  /* ---------- PDF ---------- */
+  function fileName() {
+    const clean = (s) => pdfText(s)
+      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')
+      .replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue').replace(/ß/g, 'ss')
+      .replace(/[^A-Za-z0-9-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'unbekannt';
+    return 'Fotoprotokoll_' + clean(proto.meta.baustelle) + '_' + clean(proto.meta.bereich) + '_' + proto.meta.datum + '.pdf';
+  }
+
+  function buildPdf() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    const m = proto.meta;
+    const PW = 210, PH = 297, M = 15, CW = PW - 2 * M, BOTTOM = PH - 18, TOP = 27;
+    const PRIMARY = [30, 58, 95], GRAY = [93, 102, 118], DARK = [26, 31, 41];
+    let y;
+    const ensure = (h) => { if (y + h > BOTTOM) { doc.addPage(); y = TOP; } };
+    const setColor = (rgb) => doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+    const font = (style, size) => { doc.setFont('helvetica', style); doc.setFontSize(size); };
+    const lineH = (size) => size * 0.3528 * 1.25;
+    const fit = (ph, maxW, maxH) => { const s = Math.min(maxW / ph.w, maxH / ph.h); return { w: ph.w * s, h: ph.h * s }; };
+
+    // Kopf Seite 1
+    doc.setFillColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
+    doc.rect(0, 0, PW, 30, 'F');
+    if (logoData) doc.addImage(logoData, 'PNG', PW - M - 26, 2, 26, 26, 'logo', 'FAST');
+    font('bold', 19); doc.setTextColor(255, 255, 255);
+    doc.text('Fotoprotokoll', M, 13);
+    font('normal', 10.5);
+    doc.text('Vorher / Nachher', M, 20);
+    font('normal', 9);
+    doc.text(pdfText('Erstellt: ' + fmtDateTime(new Date().toISOString())), M, 26);
+    y = 38;
+
+    const rows = [['Baustelle', m.baustelle], ['Bereich', m.bereich], ['Datum', isoToDe(m.datum)], ['Prüfer', m.pruefer]];
+    font('normal', 11);
+    const lines = rows.map((r) => doc.splitTextToSize(pdfText(r[1]), CW - 40));
+    const metaH = lines.reduce((a, l) => a + l.length * lineH(11) + 1.6, 0) + 6;
+    doc.setFillColor(243, 245, 248);
+    doc.roundedRect(M, y, CW, metaH, 2, 2, 'F');
+    let my = y + 4 + lineH(11) * 0.75;
+    rows.forEach((r, i) => {
+      font('bold', 11); setColor(GRAY); doc.text(pdfText(r[0]) + ':', M + 4, my);
+      font('normal', 11); setColor(DARK); doc.text(lines[i], M + 34, my);
+      my += lines[i].length * lineH(11) + 1.6;
+    });
+    y += metaH + 4;
+    const s = stats(proto);
+    font('normal', 10); setColor(DARK);
+    doc.text(pdfText('Positionen: ' + s.n + '   ·   mit Vorher-Foto: ' + s.vorher + '   ·   mit Nachher-Foto: ' + s.nachher), M, y + 3);
+    y += 10;
+
+    const colGap = 6, colW = (CW - colGap) / 2, maxH = 95, capH = 12, emptyH = 40;
+    const photoH = (ph) => (ph ? fit(ph, colW, maxH).h : emptyH);
+
+    proto.entries.forEach((e, i) => {
+      font('normal', 10);
+      const noteLines = e.note && e.note.trim() ? doc.splitTextToSize(pdfText('Notiz: ' + e.note.trim()), CW) : [];
+      const noteH = noteLines.length ? noteLines.length * lineH(10) + 2 : 0;
+      const rowH = Math.max(photoH(e.vorher), photoH(e.nachher));
+      ensure(10 + noteH + rowH + capH + 6);
+
+      font('bold', 13); setColor(DARK);
+      doc.text(doc.splitTextToSize(pdfText((i + 1) + '. ' + e.name), CW)[0], M, y + 4.6);
+      y += 9;
+      if (noteLines.length) {
+        font('normal', 10); setColor(DARK);
+        doc.text(noteLines, M, y + 2.5);
+        y += noteH;
+      }
+      [['vorher', 'Vorher'], ['nachher', 'Nachher']].forEach(([key, label], ci) => {
+        const x0 = M + ci * (colW + colGap);
+        const ph = e[key];
+        if (ph) {
+          const f = fit(ph, colW, maxH);
+          const px = x0 + (colW - f.w) / 2;
+          doc.addImage(ph.data, 'JPEG', px, y, f.w, f.h, undefined, 'FAST');
+          doc.setDrawColor(200, 205, 212); doc.setLineWidth(0.2);
+          doc.rect(px, y, f.w, f.h);
+          const cy = y + rowH + 1;
+          font('bold', 8.5); setColor(DARK); doc.text(label, px, cy + 3);
+          font('normal', 7.5); setColor(GRAY);
+          doc.text(pdfText(fmtDateTime(ph.time)), px, cy + 6.6);
+          doc.text(pdfText(fmtGps(ph.gps)), px, cy + 10);
+        } else {
+          doc.setDrawColor(180, 188, 200); doc.setLineWidth(0.3);
+          doc.setLineDashPattern([1.5, 1.5], 0);
+          doc.rect(x0, y, colW, emptyH);
+          doc.setLineDashPattern([], 0);
+          font('normal', 9.5); setColor(GRAY);
+          doc.text(label + '-Foto fehlt', x0 + colW / 2, y + emptyH / 2 + 1, { align: 'center' });
+          font('bold', 8.5); setColor(DARK); doc.text(label, x0, y + rowH + 4);
+        }
+      });
+      y += rowH + 1 + capH + 2;
+      doc.setDrawColor(210, 215, 222); doc.setLineWidth(0.3);
+      doc.line(M, y, M + CW, y);
+      y += 5;
+    });
+
+    // Kopf- und Fußzeilen
+    const n = doc.getNumberOfPages();
+    for (let p = 1; p <= n; p++) {
+      doc.setPage(p);
+      if (p > 1) {
+        if (logoData) doc.addImage(logoData, 'PNG', PW - M - 17, 3.5, 17, 17, 'logo', 'FAST');
+        font('bold', 11); setColor(PRIMARY);
+        doc.text('Fotoprotokoll Vorher / Nachher', M, 12);
+        font('normal', 8.5); setColor(GRAY);
+        doc.text(doc.splitTextToSize(pdfText(m.baustelle + ' · ' + m.bereich + ' · ' + isoToDe(m.datum)), CW - 25)[0], M, 17);
+        doc.setDrawColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]); doc.setLineWidth(0.4);
+        doc.line(M, 22.5, PW - M - (logoData ? 19 : 0), 22.5);
+      }
+      doc.setDrawColor(210, 215, 222); doc.setLineWidth(0.3);
+      doc.line(M, PH - 12, PW - M, PH - 12);
+      font('normal', 8); setColor(GRAY);
+      doc.text(doc.splitTextToSize(pdfText('Fotoprotokoll · ' + m.baustelle + ' · ' + m.bereich + ' · Prüfer: ' + m.pruefer), CW - 30)[0], M, PH - 7.5);
+      doc.text('Seite ' + p + ' von ' + n, PW - M, PH - 7.5, { align: 'right' });
+    }
+    return doc;
+  }
+
+  function waitForJsPdf(timeoutMs) {
+    return new Promise((resolve) => {
+      if (window.jspdf && window.jspdf.jsPDF) return resolve(true);
+      const t0 = Date.now();
+      const iv = setInterval(() => {
+        if (window.jspdf && window.jspdf.jsPDF) { clearInterval(iv); resolve(true); }
+        else if (Date.now() - t0 > timeoutMs) { clearInterval(iv); resolve(false); }
+      }, 200);
+    });
+  }
+
+  $('#btn-pdf').addEventListener('click', async () => {
+    if (busyPhotos > 0) { toast('Bitte warten, Foto wird noch verarbeitet…'); return; }
+    const s = stats(proto);
+    if (!s.n) { alert('Bitte mindestens eine Position anlegen.'); return; }
+    if (!proto.entries.some((e) => e.vorher || e.nachher)) { alert('Es wurde noch kein Foto aufgenommen.'); return; }
+    const missing = s.n - s.nachher;
+    if (missing > 0 && !confirm(missing + (missing === 1 ? ' Position hat' : ' Positionen haben') +
+        ' noch kein Nachher-Foto.\n\nTrotzdem Protokoll erstellen? (Nachher-Fotos können später ergänzt werden.)')) return;
+    overlay(true, 'Protokoll wird erstellt…');
+    await new Promise((r) => setTimeout(r, 60));
+    try {
+      if (!(await waitForJsPdf(8000))) throw new Error('jsPDF nicht geladen');
+      clearTimeout(noteTimer);
+      const doc = buildPdf();
+      pdf = { blob: doc.output('blob'), name: fileName() };
+      proto.lastPdf = Date.now();
+      await repo.put(proto);
+      overlay(false);
+      $('#done-sub').textContent = proto.meta.baustelle + ' · ' + proto.meta.bereich;
+      $('#done-info').innerHTML =
+        '<p style="margin:0 0 6px;font-weight:700;word-break:break-all">' + esc(pdf.name) + '</p>' +
+        '<p class="muted" style="margin:0">' + s.n + ' ' + (s.n === 1 ? 'Position' : 'Positionen') + ' · ' + s.nachher +
+        ' mit Nachher-Foto · ' + Math.max(1, Math.round(pdf.blob.size / 1024)) + ' KB</p>';
+      showScreen('screen-done');
+    } catch (err) {
+      overlay(false);
+      alert(err && err.message === 'jsPDF nicht geladen'
+        ? 'Die PDF-Bibliothek konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.'
+        : 'Das Protokoll konnte nicht erstellt werden: ' + (err && err.message ? err.message : err));
+    }
+  });
+
+  /* ---------- Fertig ---------- */
+  function downloadPdf() {
+    const url = URL.createObjectURL(pdf.blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = pdf.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  $('#btn-share').addEventListener('click', async () => {
+    if (!pdf) return;
+    let file = null;
+    try { file = new File([pdf.blob], pdf.name, { type: 'application/pdf' }); } catch (e) {}
+    if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: pdf.name, text: 'Fotoprotokoll ' + proto.meta.baustelle + ', ' + proto.meta.bereich });
+        return;
+      } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    downloadPdf();
+    toast('Teilen nicht verfügbar – PDF wird heruntergeladen');
+  });
+  $('#btn-download').addEventListener('click', () => { if (pdf) downloadPdf(); });
+  $('#btn-continue').addEventListener('click', () => { renderHead(); renderEntries(); showScreen('screen-proto'); });
+  $('#btn-done-overview').addEventListener('click', () => { proto = null; initStart(); showScreen('screen-start'); });
+
+  // Beim Wechsel in eine andere App sofort speichern
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && proto) { clearTimeout(noteTimer); repo.put(proto); }
+  });
+
+  /* ---------- Warnung beim Verlassen ---------- */
+  window.addEventListener('beforeunload', (e) => {
+    if (busyPhotos > 0 || pendingSaves > 0 || (!dbOk && proto && proto.entries.length)) {
+      e.preventDefault();
+      e.returnValue = 'Das Protokoll wird noch gespeichert.';
+      return e.returnValue;
+    }
+  });
+
+  /* ---------- Start ---------- */
+  initStart();
+  geo.start();
+})();
+</script>
+</body>
+</html>
