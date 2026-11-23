@@ -24,6 +24,7 @@ Oben auf dem Startbildschirm wechselt man zwischen **🚪 Türen**, **🪟 Fenst
 - Für alle sonstigen Gewerke, zum Beispiel Malerarbeiten, Fliesen oder Trockenbau. Jede Position hat eine Bezeichnung.
 - Feld **Wohnung / Bereich**, damit auch Treppenhaus, Keller usw. passen
 - **Übersichtsfoto** ist Pflicht, ein zweites Foto („Weitere Ansicht“) optional
+- Beim Gewerk „Allgemein“ zusätzlich ein optionales **Vorher-Foto**. Im PDF stehen dann Vorher und Nachher nebeneinander.
 - Zustand, Notiz mit Diktat und Detailfoto wie bei den Türen
 - **Gewerk** pro Position: „Allgemein“ (ohne Prüfliste) oder „Fliesen“. Das gewählte Gewerk bleibt für die nächste Position eingestellt.
 - **Prüfliste Fliesen:** Fugenbild gleichmäßig, Fugen gefüllt ohne Risse, Ebenheit/kein Kantenversatz, kein Hohlklang, keine beschädigten Fliesen, Silikonfugen sauber und dicht, Gefälle zum Ablauf (auch „entfällt“ möglich), gereinigt. Weitere Gewerke werden in `arbeiten.html` unter `GEWERKE` ergänzt.

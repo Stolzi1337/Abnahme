@@ -177,6 +177,7 @@
   }
   .gbtn.sel { background: var(--primary); color: #fff; }
   #cl-field { display: none; }
+  #vorher-field.hide { display: none; }
   #cl-field.show { display: block; }
   .cl-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
   .cl-all {
@@ -365,6 +366,14 @@
       <div class="field" style="margin-bottom:14px">
         <span style="display:block;font-weight:600;margin-bottom:6px;font-size:15px">Gewerk</span>
         <div class="gewerk" id="gewerk"></div>
+      </div>
+
+      <div class="field" id="vorher-field" style="margin-bottom:14px">
+        <span style="display:block;font-weight:600;margin-bottom:6px;font-size:15px">Vorher-Foto <span style="font-weight:400;color:var(--muted)">(optional)</span></span>
+        <label class="slot detail" id="slot-vorher" data-key="vorher" data-label="Vorher">
+          <input type="file" accept="image/*" capture="environment">
+          <div class="slot-body"></div>
+        </label>
       </div>
 
       <div class="field">
@@ -669,11 +678,11 @@
   let current = newDoor();
 
   function newDoor(gewerk) {
-    return { id: Date.now() + Math.random(), name: '', front: null, back: null, status: null, note: '', detail: null,
+    return { id: Date.now() + Math.random(), name: '', front: null, back: null, status: null, note: '', detail: null, vorher: null,
       gewerk: gewerk || 'allgemein', checks: {} };
   }
   function isDirty(d) {
-    return !!(d.name.trim() || d.front || d.back || d.status || d.note.trim() || d.detail || Object.keys(d.checks).length);
+    return !!(d.name.trim() || d.front || d.back || d.status || d.note.trim() || d.detail || d.vorher || Object.keys(d.checks).length);
   }
 
   /* ---------- Prüfer (mehrere) ---------- */
@@ -814,7 +823,7 @@
     } else {
       body.innerHTML =
         '<div class="ico">📷</div><div class="lbl">' + esc(label) + '</div>' +
-        '<div class="sub">' + (key === 'detail' || key === 'back' ? 'optional – antippen' : 'antippen zum Fotografieren') + '</div>';
+        '<div class="sub">' + (key === 'detail' || key === 'back' || key === 'vorher' ? 'optional – antippen' : 'antippen zum Fotografieren') + '</div>';
     }
   }
 
@@ -914,6 +923,7 @@
   }
   function renderChecklist() {
     const checks = checksOf(current);
+    $('#vorher-field').classList.toggle('hide', current.gewerk !== 'allgemein');
     $('#cl-field').classList.toggle('show', checks.length > 0);
     $('#cl-title').innerHTML = 'Prüfliste ' + esc(GEWERKE[current.gewerk].label) + ' <em style="font-style:normal;color:var(--bad)">*</em>';
     $('#checklist').innerHTML = checks.map((c) => {
@@ -933,6 +943,8 @@
     if (!b || b.dataset.g === current.gewerk) return;
     current.gewerk = b.dataset.g;
     current.checks = {};
+    if (current.gewerk !== 'allgemein') current.vorher = null;
+    renderSlot($('#slot-vorher'));
     renderGewerk();
     renderChecklist();
     $('#checklist').classList.remove('invalid');
@@ -1475,8 +1487,14 @@
       font('normal', 10);
       const noteLines = d.note ? doc.splitTextToSize(pdfText('Notiz: ' + d.note), CW) : [];
       const noteH = noteLines.length ? noteLines.length * lineH(10) + 2 : 0;
-      const f1 = fit(d.front, colW, photoMaxH), f2 = d.back ? fit(d.back, colW, photoMaxH) : { w: 0, h: 0 };
-      const rowH = Math.max(f1.h, f2.h);
+      const pics = [];
+      if (d.vorher) pics.push({ p: d.vorher, t: 'Vorher' });
+      pics.push({ p: d.front, t: d.vorher ? 'Nachher' : 'Übersicht' });
+      if (d.back) pics.push({ p: d.back, t: 'Weitere Ansicht' });
+      const picRows = [];
+      for (let pi = 0; pi < pics.length; pi += 2) picRows.push(pics.slice(pi, pi + 2));
+      const rowHeight = (row) => Math.max.apply(null, row.map((x) => fit(x.p, colW, photoMaxH).h));
+      const rowH = rowHeight(picRows[0]);
       // Titel, Notiz und Hauptfotos zusammenhalten; Detailfoto darf umbrechen
       const dChecks = checksOf(d);
       const checkH = dChecks.length ? Math.ceil(dChecks.length / 2) * 5 + 7 : 0;
@@ -1516,14 +1534,18 @@
         y += noteH;
       }
 
-      // Vorder- und Rückseite nebeneinander
-      ensure(rowH + capH);
-      drawPhoto(d.front, M, y, colW, photoMaxH);
-      if (d.back) drawPhoto(d.back, M + colW + colGap, y, colW, photoMaxH);
-      y += rowH + 1;
-      caption(d.front, M + (colW - f1.w) / 2, y, 'Übersicht');
-      if (d.back) caption(d.back, M + colW + colGap + (colW - f2.w) / 2, y, 'Weitere Ansicht');
-      y += capH;
+      // Fotos jeweils zu zweit nebeneinander
+      picRows.forEach((row, ri) => {
+        const h = rowHeight(row);
+        ensure(h + capH + (ri ? 3 : 0));
+        if (ri) y += 3;
+        row.forEach((x, ci) => {
+          const x0 = M + ci * (colW + colGap);
+          const f = drawPhoto(x.p, x0, y, colW, photoMaxH);
+          caption(x.p, x0 + (colW - f.w) / 2, y + h + 1, x.t);
+        });
+        y += h + 1 + capH;
+      });
 
       if (d.detail) {
         const fd = fit(d.detail, colW, 70);
