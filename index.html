@@ -87,6 +87,11 @@
   input:focus, textarea:focus { outline: none; border-color: var(--primary); }
   .invalid { border-color: var(--bad) !important; background: #fff7f7 !important; }
 
+  .prow { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .prow input { flex: 1; min-width: 0; }
+  .prow .del { width: 56px; height: 56px; }
+  .btn.add { min-height: 52px; font-size: 17px; margin: 0; border-style: dashed; }
+
   .hint {
     display: none; margin-top: 8px; padding: 10px 12px;
     background: #e8f0fb; color: var(--primary); border-radius: 10px; font-size: 15px;
@@ -275,10 +280,14 @@
         <span>Kunde</span>
         <input type="text" id="f-kunde" autocomplete="off" placeholder="Name des Kunden">
       </label>
-      <label class="field">
-        <span>Name des Prüfers <em>*</em></span>
-        <input type="text" id="f-pruefer" autocomplete="name" placeholder="Ihr Name">
-      </label>
+      <div class="field" style="margin-bottom:16px">
+        <span style="display:block;font-weight:600;margin-bottom:6px;font-size:15px">Name des Prüfers <em style="font-style:normal;color:var(--bad)">*</em></span>
+        <div id="pruefer-list">
+          <div class="prow"><input type="text" id="f-pruefer" list="pruefer-names" autocomplete="off" placeholder="Ihr Name"></div>
+        </div>
+        <datalist id="pruefer-names"></datalist>
+        <button class="btn secondary add" id="btn-add-pruefer" type="button">+ Weiteren Prüfer hinzufügen</button>
+      </div>
       <div class="errors" id="start-errors"></div>
       <button class="btn big" id="btn-start" type="button">Abnahme starten ▶</button>
     </div>
@@ -421,6 +430,8 @@
 
   const KEY_SITES = 'abnahme.baustellen';
   const KEY_PRUEFER = 'abnahme.pruefer';
+  const KEY_PRUEFER_EXTRA = 'abnahme.pruefer.weitere';
+  const KEY_PRUEFER_NAMES = 'abnahme.pruefer.namen';
 
   const store = {
     get(key, fallback) {
@@ -602,6 +613,47 @@
     return !!(d.name.trim() || d.front || d.back || d.status || d.note.trim() || d.detail);
   }
 
+  /* ---------- Prüfer (mehrere) ---------- */
+  function addPrueferRow(value) {
+    const row = document.createElement('div');
+    row.className = 'prow';
+    row.innerHTML = '<input type="text" class="p-extra" list="pruefer-names" autocomplete="off" placeholder="Weiterer Prüfer">' +
+      '<button class="del" type="button" aria-label="Prüfer entfernen">✕</button>';
+    const input = row.querySelector('input');
+    input.value = value || '';
+    row.querySelector('.del').addEventListener('click', () => row.remove());
+    $('#pruefer-list').appendChild(row);
+    return input;
+  }
+  function setPruefer(main, extras) {
+    $$('#pruefer-list .p-extra').forEach((el) => el.parentNode.remove());
+    $('#f-pruefer').value = main || '';
+    (extras || []).forEach((n) => addPrueferRow(n));
+  }
+  function getPruefer() {
+    const names = [$('#f-pruefer').value].concat($$('#pruefer-list .p-extra').map((el) => el.value))
+      .map((n) => n.trim()).filter(Boolean);
+    return names.filter((n, i) => names.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === i);
+  }
+  function renderPrueferNames() {
+    const names = store.get(KEY_PRUEFER_NAMES, []);
+    $('#pruefer-names').innerHTML = (Array.isArray(names) ? names : [])
+      .map((n) => '<option value="' + esc(n) + '"></option>').join('');
+  }
+  function rememberPruefer(list) {
+    store.set(KEY_PRUEFER, list[0] || '');
+    store.set(KEY_PRUEFER_EXTRA, list.slice(1));
+    let names = store.get(KEY_PRUEFER_NAMES, []);
+    if (!Array.isArray(names)) names = [];
+    list.slice().reverse().forEach((n) => {
+      names = names.filter((x) => typeof x === 'string' && x.toLowerCase() !== n.toLowerCase());
+      names.unshift(n);
+    });
+    store.set(KEY_PRUEFER_NAMES, names.slice(0, 30));
+    renderPrueferNames();
+  }
+  $('#btn-add-pruefer').addEventListener('click', () => addPrueferRow('').focus());
+
   /* ---------- Startbildschirm ---------- */
   function initStart(opts) {
     opts = opts || {};
@@ -609,7 +661,9 @@
     $('#f-baustelle').value = opts.keepSite && state.meta ? state.meta.baustelle : '';
     $('#f-wohnung').value = '';
     $('#f-kunde').value = '';
-    $('#f-pruefer').value = store.get(KEY_PRUEFER, '') || '';
+    const extras = store.get(KEY_PRUEFER_EXTRA, []);
+    setPruefer(store.get(KEY_PRUEFER, '') || '', Array.isArray(extras) ? extras.filter((n) => typeof n === 'string' && n.trim()) : []);
+    renderPrueferNames();
     $('#baustelle-hint').classList.remove('show');
     $('#baustelle-hint').onclick = null;
     $('#start-errors').classList.remove('show');
@@ -632,7 +686,8 @@
     if (!fields.datum.value) { errs.push('Datum fehlt'); fields.datum.classList.add('invalid'); }
     if (!fields.baustelle.value.trim()) { errs.push('Baustelle angeben'); fields.baustelle.classList.add('invalid'); }
     if (!fields.wohnung.value.trim()) { errs.push('Wohnung angeben'); fields.wohnung.classList.add('invalid'); }
-    if (!fields.pruefer.value.trim()) { errs.push('Name des Prüfers angeben'); fields.pruefer.classList.add('invalid'); }
+    const prueferList = getPruefer();
+    if (!prueferList.length) { errs.push('Name des Prüfers angeben'); fields.pruefer.classList.add('invalid'); }
     const box = $('#start-errors');
     if (errs.length) {
       box.innerHTML = 'Bitte ergänzen:<ul>' + errs.map((e) => '<li>' + esc(e) + '</li>').join('') + '</ul>';
@@ -646,9 +701,11 @@
       baustelle: fields.baustelle.value.trim(),
       wohnung: fields.wohnung.value.trim(),
       kunde: fields.kunde.value.trim(),
-      pruefer: fields.pruefer.value.trim()
+      pruefer: prueferList.join(', '),
+      prueferList: prueferList
     };
-    store.set(KEY_PRUEFER, state.meta.pruefer);
+    rememberPruefer(prueferList);
+    setPruefer(prueferList[0], prueferList.slice(1));
     const pos = geo.last && Date.now() - geo.last.ts < 5 * 60000 ? geo.copy() : null;
     rememberSite(state.meta.baustelle, pos);
     if (!pos) {
